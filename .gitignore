@@ -1,0 +1,35 @@
+#OS temp files (like vim temp. files)
+.DS_Store
+*~
+.AppleDouble
+.LSOverride
+
+# Icon must ends with two \r.
+Icon
+
+
+# Thumbnails
+._*
+
+# Files that might appear on external disk
+.Spotlight-V100
+.Trashes
+
+#Python temp files (like python compiled bytecodes)
+*.swp
+__pycache__/
+*.py[cod]
+
+# C extensions for python
+*.so
+
+# Vim ignore files
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+*.un~
+Session.vim
+.netrwhist
+
+# workspace files are user-specific
+*.sublime-workspace
+
