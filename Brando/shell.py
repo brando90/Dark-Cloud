@@ -91,6 +91,12 @@ def status(args):
     else:
         print "Not logged in."
 
+def exit_shell(args):
+    if len(args) != 0:
+        print "Not a valid command, make sure exit has not arguments"
+    sys.exit(0)
+
+
 def show_help(args):
     print "Available commands:"
     for cmd in commands:
@@ -104,6 +110,7 @@ commands = {
     'logout': logout,
     'status': status,
     'reexec': reexec,
+    'exit':exit_shell,
     'help': show_help,
 }
 
