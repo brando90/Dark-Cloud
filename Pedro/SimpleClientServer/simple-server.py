@@ -9,23 +9,47 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 	def do_GET(self):
 		rootdir = '/Users/pedrocattori/DarkCloud/Pedro/SimpleClientServer/'
 		try:
-			print('requested path: ' + rootdir + self.path)
-			f = open(rootdir + self.path) # open requested file
-
-			# send code 200 response
-			self.send_response(200)
-
-			# send header first
-			self.send_header('Content-type', 'text')
-			self.end_headers()
-
-			# send file content to client
-			self.wfile.write(f.read())
-			f.close()
+			absolute_path = rootdir + self.path
+			print('requested path: ' + absolute_path)
+			if os.path.isfile(absolute_path):
+				self.getFile(absolute_path)
+			elif os.path.isdir(absolute_path):
+				self.getDir(absolute_path)
+			else:
+				self.send_error(404, 'file/dir not found')
 			return
-
 		except IOError:
-			self.send_error(404, 'file not found')
+			self.send_error(404, 'file/dir not found')
+
+
+	# *** HELPERS ***
+	def getFile(self, absolute_path):
+		f = open(absolute_path)
+		# send code 200 response
+		self.send_response(200)
+
+		# send header first
+		self.send_header('Content-type', 'text')
+		self.end_headers()
+
+		# send file content to client
+		self.wfile.write(f.read())
+		f.close()
+		return
+
+	def getDir(self, absolute_path):
+		ls = '\n'.join(os.listdir(absolute_path))
+
+		# send code 200 response
+		self.send_response(200)
+
+		# send header first
+		self.send_header('Content-type', 'text')
+		self.end_headers()
+
+		self.wfile.write(ls)
+		return
+
 
 def run():
 	print('http server is starting...')
