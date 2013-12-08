@@ -15,10 +15,11 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	Delete = 'delete'
 	# ---------------
 
+
 	# *** Query string keys ***
 	Method = 'method'
-	NewFile = 'file'
-	NewDir = 'dir'
+	File = 'file'
+	Dir = 'dir'
 	# -------------------------
 
 
@@ -37,7 +38,9 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def do_PUT(self):
 		encryptedPath = self.url.path
 		method = self.getQueryMethod()
-		encryptedContents = self.getEncryptedContents()
+		encryptedContents = self.getEncryptedBody()
+		isFile = self.toBoolean(newFile())
+		isDir = self.toBoolean(newDir())
 
 		if method != Create:
 			self.send_error(405, "PUT requests must have method set to 'create'")
@@ -45,9 +48,9 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		if os.path.isfile(encryptedPath) or os.path.isdir(encryptedPath):
 			self.send_error(403, "A file or directory already exists at given path")
 
-		if newFile():
+		if isFile:
 			self.createFile(encryptedPath, encryptedContents)
-		elif newDir():
+		elif isDir:
 			self.createDir(encryptedPath, encryptedContents)
 		else:
 			self.send_error(400, "must set either 'file' or 'dir' to 'true' in PUT requests (not both)")
@@ -73,16 +76,18 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def do_POST(self):
 		encryptedPath = self.url.path
 		method = self.getQueryMethod()
-		newEncryptedContents = self.getEncryptedContents()
-		newPath = self.getEncryptedPath
+		newEncryptedContents = None # initialized if method is Write
+		newEncryptedPath = None # initialized if method is Rename
 
 		if method == Write:
+			newEncryptedContents = self.getEncryptedBody()
 			if os.path.isfile(encryptedPath):
 				self.writeFile(encryptedPath, newEncryptedContents)
 			else:
 				self.send_error(405, "Path for POST request with 'write' method must point to a file")
 		elif method == Rename:
-			self.renameFileOrDir(encryptedPath)
+			newEncryptedPath = self.getEncryptedBody()
+			self.renameFileOrDir(encryptedPath, newEncryptedPath)
 		else:
 			self.send_error(405, "POST requests must have method set to 'write' or 'rename'")
 		return
@@ -108,8 +113,16 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# *** Helpers ***
 
+	def toBoolean(self, string):
+		if string == 'True':
+			return True
+		elif string == 'False':
+			return False
+		else:
+			self.send_error(405, "Cannot convert '" + string + "' to a boolean")
+			return
+
 	def parseURL(self):
-		#TODO: sanitize path
 		return urlparse(self.path)
 
 	def getQueryArg(self, key):
@@ -119,13 +132,14 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		return self.getQueryArg(Method)
 
 	def newFile(self):
-		return self.getQueryArg(NewFile)
+		return self.getQueryArg(File)
 
 	def newDir(self):
-		return self.getQueryArg(NewDir)
+		return self.getQueryArg(Dir)
 
-	def getEncryptedContents(self):
-		pass
+	def getEncryptedBody(self):
+		encryptedContentLength = int(self.headers.getheader('content-length'))
+		return self.rfile.read(encryptedContentLength)
 
 	# ----------------------
 
@@ -209,10 +223,9 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 # *** Run Dark Cloud Beta Server ***
 
 def run():
-	print('Dark Cloud Beta server is starting...')
-
 	# ip and port
 	server_address = ('127.0.0.1', 8080)
+	print('Dark Cloud Beta server is starting at: ' + repr(server_address))
 	httpd = HTTPServer(server_address, DCHTTPRequestHandler)
 	print('Dark Cloud Beta server is now running...')
 	httpd.serve_forever()
