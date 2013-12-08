@@ -17,11 +17,13 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# *** Query string keys ***
 	Method = 'method'
-	KeyFile = 'keyfile'
+	EncryptedKeyFile = 'keyfile'
+	NewFile = 'file'
+	NewDir = 'dir'
 	# -------------------------
 
-	# *** 'Overridden' methods ***
 
+	# *** 'Overridden' methods ***
 
 	def __init__(self, *args, **kwargs):
 		BaseHTTPServer.HTTPServer.__init__(self, *args, **kwargs)
@@ -34,7 +36,22 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# Create
 	def do_PUT(self):
-		pass
+		path = self.url.path
+		method = self.getQueryMethod()
+		encryptedKeyFile = getEncryptedKeyFile()
+		contents = getContents()
+		signedParentDir = getSignedParentDir()
+
+		if method != Create:
+			self.send_error(405, "PUT requests must have method set to 'create'")
+
+		if newFile():
+			createFile(path)
+		elif newDir():
+			createDir(path)
+		else:
+			self.send_error(400, "must set either 'file' or 'dir' to 'true' in PUT requests (not both)")
+		return
 
 	# Read
 	def do_GET(self):
@@ -76,8 +93,8 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# ---------------
 
-	# *** Helpers ***
 
+	# *** Helpers ***
 
 	def parseURL(self):
 		#TODO: sanitize path
@@ -86,19 +103,41 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def getQueryArg(self, key):
 		return parse_qs(self.url.query).get(key)
 
-	def getQueryMethod(self):
+	def getMethod(self):
 		return self.getQueryArg(Method)
 
-	def updateParentDirSignature(self, path):
+	def newFile(self):
+		return self.getQueryArg(NewFile)
+
+	def newDir(self):
+		return self.getQueryArg(NewDir)
+
+	def getEncryptedKeyFile(self):
+		return self.getQueryArg(EncryptedKeyFile)
+
+	def getContents(self):
+		pass
+
+	def getSignedParentDir(self):
+		pass
+
+	def updateSignedParentDir(self, path):
 		pass
 
 	# ----------------------
 
+
 	# *** Method helpers ***
 
-
-	def createFile(self, path):
+	def createFile(self, path, encryptedContents):
 		# create file, update parent directory signature
+		fd = open(path, 'w+')
+		os.write(fd, encryptedContents)
+		updateSignedParentDir()
+
+		self.send_response(200)
+
+		fd.close()
 		pass
 
 	def createDir(self, path):
@@ -113,8 +152,8 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		#self.send_header('Content-type', 'text')
 		#self.end_headers()
 
-		self.wfile.write(f.read())
-		f.close()
+		self.wfile.write(fd.read())
+		fd.close()
 		return
 
 	def readDir(self, path, withKeyFile):
@@ -129,29 +168,46 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		self.wfile.write(ls)
 		return
 
-	def writeFile(self, path):
+	def writeFile(self, path, newEncryptedContents):
 		# write file contents
-		pass
+		fd = open(path)
+		fd.seek(0)
+		fd.write(newEncryptedContents)
+		fd.truncate()
 
-	def renameFileOrDir(self, path, newName):
+		self.send_response(200)
+
+		fd.close()
+		return
+
+	def renameFileOrDir(self, path, newPath):
 		# rename file or dir, update parent directory signature
-		pass
+		os.rename(path, newPath)
+		updateSignedParentDir()
+
+		self.send_response(200)
+		return
 
 	def deleteFile(self, path):
 		# delete file, update parent directory signature
 		os.remove(path)
+		updateSignedParentDir()
+
 		self.send_response(200)
 		return
 
 	def deleteDir(self, path):
 		# delete dir, update parent directory signature
 		os.rmdir(path)
+		updateSignedParentDir()
+
 		self.send_response(200)
 		return
+
 # ----------------------------------
 
-# *** Run Dark Cloud Beta Server ***
 
+# *** Run Dark Cloud Beta Server ***
 
 def run():
 	print('Dark Cloud Beta server is starting...')
