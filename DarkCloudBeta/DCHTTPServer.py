@@ -18,8 +18,8 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# *** Query string keys ***
 	Method = 'method'
-	NewFile = 'file'
-	NewDir = 'dir'
+	File = 'file'
+	Dir = 'dir'
 	# -------------------------
 
 
@@ -39,6 +39,8 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		encryptedPath = self.url.path
 		method = self.getQueryMethod()
 		encryptedContents = self.getEncryptedContents()
+		isFile = self.toBoolean(newFile())
+		isDir = self.toBoolean(newDir())
 
 		if method != Create:
 			self.send_error(405, "PUT requests must have method set to 'create'")
@@ -46,9 +48,9 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		if os.path.isfile(encryptedPath) or os.path.isdir(encryptedPath):
 			self.send_error(403, "A file or directory already exists at given path")
 
-		if newFile():
+		if isFile:
 			self.createFile(encryptedPath, encryptedContents)
-		elif newDir():
+		elif isDir:
 			self.createDir(encryptedPath, encryptedContents)
 		else:
 			self.send_error(400, "must set either 'file' or 'dir' to 'true' in PUT requests (not both)")
@@ -109,6 +111,15 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# *** Helpers ***
 
+	def toBoolean(self, string):
+		if string == 'True':
+			return True
+		elif string == 'False':
+			return False
+		else:
+			self.send_error(405, "Cannot convert '" + string + "' to a boolean")
+			return
+
 	def parseURL(self):
 		return urlparse(self.path)
 
@@ -119,10 +130,10 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		return self.getQueryArg(Method)
 
 	def newFile(self):
-		return self.getQueryArg(NewFile)
+		return self.getQueryArg(File)
 
 	def newDir(self):
-		return self.getQueryArg(NewDir)
+		return self.getQueryArg(Dir)
 
 	def getEncryptedContents(self):
 		encryptedContentLength = int(self.headers.getheader('content-length'))
