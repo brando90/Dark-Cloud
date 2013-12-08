@@ -13,6 +13,14 @@ class Passthrough(Operations):
 	def __init__(self, root):
 		self.root = root
 
+	def __call__(self, op, *args):
+		print "op:",op
+		for arg in args:
+			print "arg:", arg
+		if not hasattr(self, op):
+			raise FuseOSError(EFAULT)
+		return getattr(self, op)(*args)
+
 	# Helpers
 	# =======
 
