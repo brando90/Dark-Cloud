@@ -109,7 +109,6 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	# *** Helpers ***
 
 	def parseURL(self):
-		#TODO: sanitize path
 		return urlparse(self.path)
 
 	def getQueryArg(self, key):
@@ -125,7 +124,8 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		return self.getQueryArg(NewDir)
 
 	def getEncryptedContents(self):
-		pass
+		encryptedContentLength = int(self.headers.getheader('content-length'))
+		return self.rfile.read(encryptedContentLength)
 
 	# ----------------------
 
