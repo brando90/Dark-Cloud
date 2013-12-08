@@ -38,7 +38,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def do_PUT(self):
 		encryptedPath = self.url.path
 		method = self.getQueryMethod()
-		encryptedContents = self.getEncryptedContents()
+		encryptedContents = self.getEncryptedBody()
 		isFile = self.toBoolean(newFile())
 		isDir = self.toBoolean(newDir())
 
@@ -76,15 +76,17 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def do_POST(self):
 		encryptedPath = self.url.path
 		method = self.getQueryMethod()
-		newEncryptedContents = self.getEncryptedContents()
-		newEncryptedPath = self.getEncryptedPath
+		newEncryptedContents = None # initialized if method is Write
+		newEncryptedPath = None # initialized if method is Rename
 
 		if method == Write:
+			newEncryptedContents = self.getEncryptedBody()
 			if os.path.isfile(encryptedPath):
 				self.writeFile(encryptedPath, newEncryptedContents)
 			else:
 				self.send_error(405, "Path for POST request with 'write' method must point to a file")
 		elif method == Rename:
+			newEncryptedPath = self.getEncryptedBody()
 			self.renameFileOrDir(encryptedPath, newEncryptedPath)
 		else:
 			self.send_error(405, "POST requests must have method set to 'write' or 'rename'")
@@ -135,7 +137,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def newDir(self):
 		return self.getQueryArg(Dir)
 
-	def getEncryptedContents(self):
+	def getEncryptedBody(self):
 		encryptedContentLength = int(self.headers.getheader('content-length'))
 		return self.rfile.read(encryptedContentLength)
 

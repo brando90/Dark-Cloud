@@ -35,31 +35,31 @@ class DCHTTPClient():
 	# Request constructor: 
 	# HTTPConnection.request(method, url[, body[, headers]])
 
-	# Create
+	# Create --> PUT
 	def sendCreateRequest(self, encryptedPath, isFile=False, isDir=False, encryptedContents=None):
 		url = encryptedPath + urlencode({Method:Create, File:isFile, Dir:isDir})
 		self.connection.request(PUT, url, encryptedContents)
 		return self.connection.getresponse().read()
 
-	# Read
+	# Read --> GET
 	def sendReadRequest(self, encryptedPath):
 		url = encryptedPath + urlencode({Method:Read})
 		self.connection.request(GET, url)
 		return self.connection.getresponse().read()
 
-	# Write
+	# Write --> POST
 	def sendWriteRequest(self, encryptedPath, newEncryptedContents):
 		url = encryptedPath + urlencode({Method:Write})
 		self.connection.request(POST, url, newEncryptedContents)
 		return self.connection.getresponse().read()
 
-	# Rename
+	# Rename --> POST
 	def sendRenameRequest(self, encryptedPath, newEncryptedPath):
 		url = encryptedPath + urlencode({Method:Rename})
 		self.connection.request(POST, url, newEncryptedPath)
 		return self.connection.getresponse().read()
 
-	# Delete
+	# Delete --> DELETE
 	def sendDeleteRequest(self, encryptedPath):
 		url = encryptedPath + urlencode({Method:Delete})
 		self.connection.request(DELETE, url)
