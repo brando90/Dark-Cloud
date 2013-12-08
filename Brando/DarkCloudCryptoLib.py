@@ -32,7 +32,8 @@ class DCCryptoClient:
         #returns E[name, keyObj]
         pass
 
-    def encryptKeyFileName(self, keyFileName, password)
+    def encryptKeyFileName(self, keyFileName, password):
+        pass
 
     def encryptFile(self, fileContent, keyObj):
         pass
