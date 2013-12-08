@@ -17,7 +17,6 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# *** Query string keys ***
 	Method = 'method'
-	EncryptedKeyFile = 'keyfile'
 	NewFile = 'file'
 	NewDir = 'dir'
 	# -------------------------
@@ -38,7 +37,6 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def do_PUT(self):
 		path = self.url.path
 		method = self.getQueryMethod()
-		encryptedKeyFile = getEncryptedKeyFile()
 		contents = getContents()
 		signedParentDir = getSignedParentDir()
 
@@ -55,30 +53,40 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# Read
 	def do_GET(self):
-		# Parse request
 		path = self.url.path
 		method = self.getQueryMethod()
-		withKeyFile = self.getQueryArg(KeyFile)
 		
 		if method != Read:
 			self.send_error(405, "GET requests must have method set to 'read'")
 
 		if os.path.isfile(path):
-			self.readFile(path, withKeyFile)
-		elif os.path.isdir(path, withKeyFile):
+			self.readFile(path)
+		elif os.path.isdir(path):
 			self.readDir(path)
 		else:
 			self.send_error(404, 'file/dir not found')
+		return
 
 	# Write, Rename
 	def do_POST(self):
-		pass
+		path = self.url.path
+		method = self.getQueryMethod()
+
+		if method == Write:
+			if os.path.isfile(path):
+				self.writeFile(path)
+			else:
+				self.send_error(405, "Path for POST request with 'write' method must point to a file")
+		elif method == Rename:
+			self.renameFileOrDir(path)
+		else:
+			self.send_error(405, "POST requests must have method set to 'write' or 'rename'")
+		return
 
 	# Delete
 	def do_DELETE(self):
 		path = self.url.path
 		method = self.getQueryMethod()
-
 
 		if method != Delete:
 			self.send_error(405, "Delete requests must have method set to 'delete'")
@@ -111,9 +119,6 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	def newDir(self):
 		return self.getQueryArg(NewDir)
-
-	def getEncryptedKeyFile(self):
-		return self.getQueryArg(EncryptedKeyFile)
 
 	def getContents(self):
 		pass
