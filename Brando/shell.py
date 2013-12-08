@@ -6,6 +6,7 @@ import shlex
 import subprocess
 import sys
 import urllib2
+#import dark
 
 prompt = "pyshell $ "
 count = 0
@@ -21,6 +22,7 @@ def write_code(new_code):
     code_file = __file__
     with open(code_file, 'w') as code_fd:
         code_fd.write(new_code)
+
 
 def update(args):
     if len(args) != 1:
@@ -110,7 +112,7 @@ commands = {
     'logout': logout,
     'status': status,
     'reexec': reexec,
-    'exit':exit_shell,
+    'exit': exit_shell,
     'help': show_help,
 }
 
