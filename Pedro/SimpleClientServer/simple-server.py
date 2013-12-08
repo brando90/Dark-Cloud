@@ -2,6 +2,7 @@
 
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import os
+from urlparse import urlparse, parse_qs
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
@@ -11,6 +12,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 		try:
 			absolute_path = rootdir + self.path
 			print('requested path: ' + absolute_path)
+			parsedPath = urlparse(absolute_path)
+			print('parsed path: ' + repr(parsedPath.path))
+			print('parsed query: ' + repr(parse_qs(parsedPath.query)))
+			print('parsed query dude: ' + str(parse_qs(parsedPath.query).get('dude')))
 			if os.path.isfile(absolute_path):
 				self.getFile(absolute_path)
 			elif os.path.isdir(absolute_path):

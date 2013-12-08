@@ -1,1 +1,166 @@
 #!/usr/bin/env python
+
+from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+import os
+import urllib
+from urlparse import urlparse, parse_qs
+
+class DCHTTPRequestHandler(BaseHTTPRequestHandler):
+	
+	# *** Methods ***
+	Create = 'create'
+	Read = 'read'
+	Write = 'write'
+	Rename = 'rename'
+	Delete = 'delete'
+	# ---------------
+
+	# *** Query string keys ***
+	Method = 'method'
+	KeyFile = 'keyfile'
+	# -------------------------
+
+	# *** 'Overridden' methods ***
+
+
+	def __init__(self, *args, **kwargs):
+		BaseHTTPServer.HTTPServer.__init__(self, *args, **kwargs)
+		self.url = None
+
+	def setup(self):
+		#TODO: Verify this gets called on a per-request basis
+		BaseHTTPRequestHandler.setup(self)
+		self.url = self.parseURL()
+
+	# Create
+	def do_PUT(self):
+		pass
+
+	# Read
+	def do_GET(self):
+		# Parse request
+		path = self.url.path
+		method = self.getQueryMethod()
+		withKeyFile = self.getQueryArg(KeyFile)
+		
+		if method != Read:
+			self.send_error(405, "GET requests must have method set to 'read'")
+
+		if os.path.isfile(path):
+			self.readFile(path, withKeyFile)
+		elif os.path.isdir(path, withKeyFile):
+			self.readDir(path)
+		else:
+			self.send_error(404, 'file/dir not found')
+
+	# Write, Rename
+	def do_POST(self):
+		pass
+
+	# Delete
+	def do_DELETE(self):
+		path = self.url.path
+		method = self.getQueryMethod()
+
+
+		if method != Delete:
+			self.send_error(405, "Delete requests must have method set to 'delete'")
+
+		if os.path.isfile(path):
+			self.deleteFile(path)
+		elif os.path.isdir(path):
+			self.deleteDir(path)
+		else:
+			self.send_error(404, 'file/dir not found')
+		return
+
+	# ---------------
+
+	# *** Helpers ***
+
+
+	def parseURL(self):
+		#TODO: sanitize path
+		return urlparse(self.path)
+
+	def getQueryArg(self, key):
+		return parse_qs(self.url.query).get(key)
+
+	def getQueryMethod(self):
+		return self.getQueryArg(Method)
+
+	def updateParentDirSignature(self, path):
+		pass
+
+	# ----------------------
+
+	# *** Method helpers ***
+
+
+	def createFile(self, path):
+		# create file, update parent directory signature
+		pass
+
+	def createDir(self, path):
+		# create dir, update parent directory signature
+		pass
+
+	def readFile(self, path, withKeyFile):
+		# retrieve key file if asked to
+		fd = open(path)
+
+		self.send_response(200)
+		#self.send_header('Content-type', 'text')
+		#self.end_headers()
+
+		self.wfile.write(f.read())
+		f.close()
+		return
+
+	def readDir(self, path, withKeyFile):
+		#TODO: send directory signature
+		#TODO: retrieve keyfile if asked to
+		ls = '\n'.join(os.listdir(path))
+
+		self.send_response(200)
+		#self.send_header('Content-type', 'text')
+		#self.end_headers()
+
+		self.wfile.write(ls)
+		return
+
+	def writeFile(self, path):
+		# write file contents
+		pass
+
+	def renameFileOrDir(self, path, newName):
+		# rename file or dir, update parent directory signature
+		pass
+
+	def deleteFile(self, path):
+		# delete file, update parent directory signature
+		os.remove(path)
+		self.send_response(200)
+		return
+
+	def deleteDir(self, path):
+		# delete dir, update parent directory signature
+		os.rmdir(path)
+		self.send_response(200)
+		return
+# ----------------------------------
+
+# *** Run Dark Cloud Beta Server ***
+
+
+def run():
+	print('Dark Cloud Beta server is starting...')
+
+	# ip and port
+	server_address = ('127.0.0.1', 8080)
+	httpd = HTTPServer(server_address, DCHTTPRequestHandler)
+	print('Dark Cloud Beta server is now running...')
+	httpd.serve_forever()
+
+if __name__ == '__main__':
+	run()
