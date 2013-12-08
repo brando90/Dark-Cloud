@@ -26,7 +26,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	def __init__(self, *args, **kwargs):
 		BaseHTTPServer.HTTPServer.__init__(self, *args, **kwargs)
-		self.url = None
+		self.encryptedURL = None
 
 	def setup(self):
 		#TODO: Verify this gets called on a per-request basis
@@ -35,66 +35,70 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# Create
 	def do_PUT(self):
-		path = self.url.path
+		encryptedPath = self.url.path
 		method = self.getQueryMethod()
-		contents = getContents()
-		signedParentDir = getSignedParentDir()
+		encryptedContents = self.getEncryptedContents()
 
 		if method != Create:
 			self.send_error(405, "PUT requests must have method set to 'create'")
 
+		if os.path.isfile(encryptedPath) or os.path.isdir(encryptedPath):
+			self.send_error(403, "A file or directory already exists at given path")
+
 		if newFile():
-			createFile(path)
+			self.createFile(encryptedPath, encryptedContents)
 		elif newDir():
-			createDir(path)
+			self.createDir(encryptedPath, encryptedContents)
 		else:
 			self.send_error(400, "must set either 'file' or 'dir' to 'true' in PUT requests (not both)")
 		return
 
 	# Read
 	def do_GET(self):
-		path = self.url.path
+		encryptedPath = self.url.path
 		method = self.getQueryMethod()
 		
 		if method != Read:
 			self.send_error(405, "GET requests must have method set to 'read'")
 
-		if os.path.isfile(path):
-			self.readFile(path)
-		elif os.path.isdir(path):
-			self.readDir(path)
+		if os.path.isfile(encryptedPath):
+			self.readFile(encryptedPath)
+		elif os.path.isdir(encryptedPath):
+			self.readDir(encryptedPath)
 		else:
 			self.send_error(404, 'file/dir not found')
 		return
 
 	# Write, Rename
 	def do_POST(self):
-		path = self.url.path
+		encryptedPath = self.url.path
 		method = self.getQueryMethod()
+		newEncryptedContents = self.getEncryptedContents()
+		newPath = self.getEncryptedPath
 
 		if method == Write:
-			if os.path.isfile(path):
-				self.writeFile(path)
+			if os.path.isfile(encryptedPath):
+				self.writeFile(encryptedPath, newEncryptedContents)
 			else:
 				self.send_error(405, "Path for POST request with 'write' method must point to a file")
 		elif method == Rename:
-			self.renameFileOrDir(path)
+			self.renameFileOrDir(encryptedPath)
 		else:
 			self.send_error(405, "POST requests must have method set to 'write' or 'rename'")
 		return
 
 	# Delete
 	def do_DELETE(self):
-		path = self.url.path
+		encryptedPath = self.url.path
 		method = self.getQueryMethod()
 
 		if method != Delete:
 			self.send_error(405, "Delete requests must have method set to 'delete'")
 
-		if os.path.isfile(path):
-			self.deleteFile(path)
-		elif os.path.isdir(path):
-			self.deleteDir(path)
+		if os.path.isfile(encryptedPath):
+			self.deleteFile(encryptedPath)
+		elif os.path.isdir(encryptedPath):
+			self.deleteDir(encryptedPath)
 		else:
 			self.send_error(404, 'file/dir not found')
 		return
@@ -109,7 +113,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		return urlparse(self.path)
 
 	def getQueryArg(self, key):
-		return parse_qs(self.url.query).get(key)
+		return parse_qs(self.encryptedURL.query).get(key)
 
 	def getMethod(self):
 		return self.getQueryArg(Method)
@@ -120,13 +124,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def newDir(self):
 		return self.getQueryArg(NewDir)
 
-	def getContents(self):
-		pass
-
-	def getSignedParentDir(self):
-		pass
-
-	def updateSignedParentDir(self, path):
+	def getEncryptedContents(self):
 		pass
 
 	# ----------------------
@@ -134,48 +132,47 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# *** Method helpers ***
 
-	def createFile(self, path, encryptedContents):
-		# create file, update parent directory signature
-		fd = open(path, 'w+')
+	def createFile(self, encryptedPath, encryptedContents):
+		# create file
+		fd = open(encryptedPath, 'w+')
 		os.write(fd, encryptedContents)
-		updateSignedParentDir()
 
 		self.send_response(200)
 
 		fd.close()
-		pass
+		return
 
-	def createDir(self, path):
-		# create dir, update parent directory signature
-		pass
-
-	def readFile(self, path, withKeyFile):
-		# retrieve key file if asked to
-		fd = open(path)
+	def createDir(self, encryptedPath):
+		# create dir
+		os.mkdir(encryptedPath)
 
 		self.send_response(200)
-		#self.send_header('Content-type', 'text')
-		#self.end_headers()
+		return
+
+	def readFile(self, encryptedPath):
+		fd = open(encryptedPath)
+
+		self.send_response(200)
+		self.send_header('Content-type', 'text')
+		self.end_headers()
 
 		self.wfile.write(fd.read())
 		fd.close()
 		return
 
-	def readDir(self, path, withKeyFile):
-		#TODO: send directory signature
-		#TODO: retrieve keyfile if asked to
-		ls = '\n'.join(os.listdir(path))
+	def readDir(self, encryptedPath):
+		ls = os.listdir(encryptedPath)
 
 		self.send_response(200)
-		#self.send_header('Content-type', 'text')
-		#self.end_headers()
+		self.send_header('Content-type', 'text')
+		self.end_headers()
 
-		self.wfile.write(ls)
+		self.wfile.write(repr(ls))
 		return
 
-	def writeFile(self, path, newEncryptedContents):
-		# write file contents
-		fd = open(path)
+	def writeFile(self, encryptedPath, newEncryptedContents):
+		# overwrite file contents
+		fd = open(encryptedPath)
 		fd.seek(0)
 		fd.write(newEncryptedContents)
 		fd.truncate()
@@ -185,26 +182,23 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		fd.close()
 		return
 
-	def renameFileOrDir(self, path, newPath):
-		# rename file or dir, update parent directory signature
-		os.rename(path, newPath)
-		updateSignedParentDir()
+	def renameFileOrDir(self, encryptedPath, newPath):
+		# rename file or dir
+		os.rename(encryptedPath, newPath)
 
 		self.send_response(200)
 		return
 
-	def deleteFile(self, path):
-		# delete file, update parent directory signature
-		os.remove(path)
-		updateSignedParentDir()
+	def deleteFile(self, encryptedPath):
+		# delete file
+		os.remove(encryptedPath)
 
 		self.send_response(200)
 		return
 
-	def deleteDir(self, path):
-		# delete dir, update parent directory signature
-		os.rmdir(path)
-		updateSignedParentDir()
+	def deleteDir(self, encryptedPath):
+		# delete dir
+		os.rmdir(encryptedPath)
 
 		self.send_response(200)
 		return
