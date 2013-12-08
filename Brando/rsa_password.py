@@ -31,14 +31,22 @@ from Crypto.Cipher import AES
 import hashlib
 
 salt = hashlib.sha256(username).digest()
-keyAES = pbkdf2.PBKDF2(password, salt).read(32) 
+keyAES = pbkdf2.PBKDF2(password, salt).read(32)
 iv = pbkdf2.PBKDF2(str(keyAES), str(hashlib.sha256(fileTableName))).read(16)
 
 encryptor = AES.new(keyAES, AES.MODE_CBC, iv)
 decryptor = AES.new(keyAES, AES.MODE_CBC, iv)
 
-ciphertext = encryptor.encrypt(str(signature[0]))
+s = str(signature[0])
+padding = len(str(signature[0])) % 16
+padding = " "*(16 - padding)
+s = s+padding
+ciphertext = encryptor.encrypt(s)
 
+decrypted_signature = decryptor.decrypt(ciphertext)
+decrypted_signature = long(decrypted_signature)
+signature_to_verify = (decrypted_signature, )
 #VERIFYING
-print "Verfification result: ", public_key.verify(hash_val, (decryptor.decrypt(ciphertext),))
-
+#print "TEST: ", signature[0] == long(str(signature[0]))
+#print "Verfification result: ", public_key.verify(hash_val, signature)
+print "Verfification result: ", public_key.verify(hash_val, signature_to_verify)
