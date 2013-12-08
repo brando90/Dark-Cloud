@@ -1,10 +1,12 @@
-from PBKDF2 import PBKDF2
+import pbkdf2
 from Crypto.Cipher import AES
 import hashlib
 
 salt = hashlib.sha256('username').digest()
-key = PBKDF2("This passphrase is a secret.", salt).read(32) 
-print len(key)
-iv = hashlib.sha256('username').digest() 
-print(key)
-cipher = AES.new(key, AES.MODE_CBC, iv)
+keyAES = pbkdf2.PBKDF2("This passphrase is a secret.", salt).read(32) 
+print len(keyAES)
+
+iv = pbkdf2.PBKDF2(str(keyAES), str(hashlib.sha256("fileTableName"))).read(16)
+print len(iv)
+
+c = AES.new(keyAES, AES.MODE_CBC, iv)
