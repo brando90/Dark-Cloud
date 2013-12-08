@@ -15,6 +15,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	Delete = 'delete'
 	# ---------------
 
+
 	# *** Query string keys ***
 	Method = 'method'
 	NewFile = 'file'
@@ -74,7 +75,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		encryptedPath = self.url.path
 		method = self.getQueryMethod()
 		newEncryptedContents = self.getEncryptedContents()
-		newPath = self.getEncryptedPath
+		newEncryptedPath = self.getEncryptedPath
 
 		if method == Write:
 			if os.path.isfile(encryptedPath):
@@ -82,7 +83,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 			else:
 				self.send_error(405, "Path for POST request with 'write' method must point to a file")
 		elif method == Rename:
-			self.renameFileOrDir(encryptedPath)
+			self.renameFileOrDir(encryptedPath, newEncryptedPath)
 		else:
 			self.send_error(405, "POST requests must have method set to 'write' or 'rename'")
 		return
@@ -209,10 +210,9 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 # *** Run Dark Cloud Beta Server ***
 
 def run():
-	print('Dark Cloud Beta server is starting...')
-
 	# ip and port
 	server_address = ('127.0.0.1', 8080)
+	print('Dark Cloud Beta server is starting at: ' + repr(server_address))
 	httpd = HTTPServer(server_address, DCHTTPRequestHandler)
 	print('Dark Cloud Beta server is now running...')
 	httpd.serve_forever()
