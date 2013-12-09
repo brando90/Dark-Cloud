@@ -20,22 +20,25 @@ class DCClient:
     def createFile(args):
         name = args[0]
 
-        #request to change parent directory contents
+        #request to read parent directory contents to add new files
 
-        #request to create key file and regular file on server
-        keyfile = DCCryptoClient.DCTableKey(self.username, self.passwd, '.' + name)
-        encryptedKeyName = DCCryptoClient.encryptName('.' + name, self.passwd)
-        encryptedName = DCCryptoClient.encryptName(name, keyfile)
+        #request to create key file on server
+        keyfile = DCCryptoClient.createSecureKeyFile(self.username, self.passwd, '.kf-' + name)
+        encryptedKeyName = DCCryptoClient.encryptKeyFileName('.kf-' + name, self.passwd)
         encryptedPath = DCCryptoClient.encryptPath(self.wd)
-
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedKeyName,
                                         True,
                                         False,
-                                        "")
+                                        keyfile)
+
+        #request to create regular file on server
+        encryptedName = DCCryptoClient.encryptName(name, keyfile)
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedName,
                                         True,
                                         False,
                                         "")
+
+        #modify directory signature and send to server
 
         return "Created file: ", name
 
@@ -43,23 +46,39 @@ class DCClient:
         name = args[0]
 
         #request to change parent directory contents
+        parentDirContents = readDir(self.wd)
 
         #request to create key file and directory on server
-        keyfile = DCCryptoClient.makeKeyFile(self.username, self.passwd)
+        keyfile = DCCryptoClient.createSecureKeyFile(self.username, self.passwd, '.kf-' + name)
+        encryptedKeyName = DCCryptoClient.encryptKeyFileName('.kf-' + name, self.passwd)
         encryptedName = DCCryptoClient.encryptName(name, keyfile)
         encryptedPath = DCCryptoClient.encryptPath(self.wd)
 
+        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedKeyName,
+                                        True,
+                                        False,
+                                        keyfile)
+        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedDirectorySignature,
+                                        True,
+                                        False,
+                                        )
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedName,
                                         False,
                                         True)
 
+        #modify parent directory signature and send to server
+
+
         return "Created directory: ", name
 
-    def read(args):
-        name = args[0]
+    def read(encryptedName):
+        encryptedPath = DCCryptoClient.encryptPath(self.wd)
+        keyfileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
+
+    def readFile(name):
 
         #get encrypted keyfile name
-        encryptedKeyFileName = DCCryptoClient.encryptKeyFileName("." + name, self.passwd)
+        encryptedKeyFileName = DCCryptoClient.encryptKeyFileName('.kf-' + name, self.passwd)
 
         #TODO:check that keys exist for all parts of the encrypted path
 
@@ -72,7 +91,7 @@ class DCClient:
         keyObj = Key(self.passwd, keyfileContent)
 
         #save keyobj for later
-        DCCryptoClient.addKeyObj('.' + name, keyObj)
+        DCCryptoClient.addKeyObj('.kf-' + name, keyObj)
 
         #request encrypted file using encrypted file name
         encryptedFileName = DCCryptoClient.encryptName(name, keyObj)
@@ -82,28 +101,63 @@ class DCClient:
         #decrypt file contents
         decryptedFileContent = DCCryptoClient.decryptFile(encryptedFileContent, keyObj)
 
+        #verify contents
+
+        return decryptedFileContent
+
+    def readDir(name):
+
+        #get encrypted keyfile name
+        encryptedKeyFileName = DCCryptoClient.encryptKeyFileName('.kf-' + name, self.passwd)
+
+        #TODO:check that keys exist for all parts of the encrypted path
+
+        encryptedPath = DCCryptoClient.encryptPath(self.wd)
+
+        #request keyfile
+        keyfileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
+
+        #construct key object
+        keyObj = Key(self.passwd, keyfileContent)
+
+        #save keyobj for later
+        DCCryptoClient.addKeyObj('.kf-' + name, keyObj)
+
+        #request encrypted file using encrypted file name
+        encryptedFileName = DCCryptoClient.encryptName(name, keyObj)
+
+        encryptedFileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedFileName)
+
+        #decrypt file contents
+        decryptedFileContent = DCCryptoClient.decryptFile(encryptedFileContent, keyObj)
+
+        #verify contents
+
+        return decryptedFileContent
+        '''
         #write decrypted content to new temporary file
         with open('tmp/' + name, 'w') as f:
             f.write(decryptedFileContent)
 
         return "Created temporary file: " + name + "in location: " + os.getcwd() + "/tmp/" + name
+        '''
 
-    def write(args):
-        name = args[0]
-        content = ""
+
+    def write(name, content):
 
         #TODO: If file doesn't exist create it
-
+        '''
         #read temprorary contents from temp file
         with open('tmp/' + name, 'r') as content_file:
             content = content_file.read()
+        '''
 
         #get associated key for this file
-        if DCCryptoClient.hasKey('.' + name):
-            keyfile = DCCryptoClient.getKey('.' + name)
+        if DCCryptoClient.hasKey('.kf-' + name):
+            keyfile = DCCryptoClient.getKey('.kf-' + name)
         else:
             #request keyfile
-            encryptedKeyFileName = DCCryptoClient.encryptKeyFileName("." + name, self.passwd)
+            encryptedKeyFileName = DCCryptoClient.encryptKeyFileName('.kf-' + name, self.passwd)
             encryptedPath = DCCryptoClient.encryptPath(self.wd)
             keyfileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
             keyfile = Key(self.passwd, keyfileContent)
@@ -125,7 +179,7 @@ class DCClient:
 
         #------- request to delete key file ----------
         #get encrypted keyfile name
-        encryptedKeyFileName = DCCryptoClient.encryptKeyFileName("." + name, self.passwd)
+        encryptedKeyFileName = DCCryptoClient.encryptKeyFileName('.kf-' + name, self.passwd)
         encryptedPath = DCCryptoClient.encryptPath(self.wd)
 
         #request keyfile
