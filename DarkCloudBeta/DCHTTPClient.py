@@ -103,7 +103,5 @@ def run():
 		else:
 			raise ValueError('method must be one of: create, read, write, rename, delete')
 
-
-
 if __name__ == '__main__':
 	run()
