@@ -2,95 +2,185 @@
 
 import httplib
 import sys
-import DarkCloudCryptoLib
-
-class HttpClientLib:
-    def __init__():
-        pass
-    def sendCommand(cmd):
-        pass
-    def frameRequest(cmd):
-        pass
-    def sendRequest():
-        pass
+import DCCryptoClient
+import os
 
 
 class CommandError(Exception):
     pass
 
 
-class DarkCloudClient:
+class DCClient:
     def __init__():
         self.username = None
         self.passwd = None
         self.wd = None
+        self.HttpClient = DCHTTPClient(127.0.0.1, 8080)
 
-    def sendFile():
-        pass
+    def createFile(args):
+        name = args[0]
 
-    def createFile(name):
-        name = args
+        #request to change parent directory contents
 
-        keyfile = DarkCloudCryptoLib.makeKeyFile(self.username, self.passwd)
-        encryptedName = DarkCloudCryptoLib.encryptName(name)
-        encryptedPath = DarkCloudCryptoLib.encryptPath(self.wd)
+        #request to create key file and regular file on server
+        keyfile = DCCryptoClient.DCTableKey(self.username, self.passwd, '.' + name)
+        encryptedKeyName = DCCryptoClient.encryptName('.' + name, self.passwd)
+        encryptedName = DCCryptoClient.encryptName(name, keyfile)
+        encryptedPath = DCCryptoClient.encryptPath(self.wd)
 
-        try:
-            command = {'method': 'create', 
-                       'path': encryptPath, 
-                       'name': encryptedName, 
-                       'keyfile': keyfile}
-            HttpClientLib.sendCommand(command)
-
-        except Exception, e:
-            return "Unable to create file: ", name
+        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedKeyName,
+                                        True,
+                                        False,
+                                        "")
+        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedName,
+                                        True,
+                                        False,
+                                        "")
 
         return "Created file: ", name
 
     def mkdir(args):
-        name = args
+        name = args[0]
 
-        keyfile = DarkCloudCryptoLib.makeKeyFile(self.passwd, "." + name)
-        encryptedName = DarkCloudCryptoLib.encryptName(name)
-        encryptedPath = DarkCloudCryptoLib.encryptPath(self.wd)
+        #request to change parent directory contents
 
-        try:
-            command = {'method': 'mkdir', 
-                       'path': encryptPath, 
-                       'name': encryptedName, 
-                       'keyfile': keyfile}
-            HttpClientLib.sendCommand(command)
+        #request to create key file and directory on server
+        keyfile = DCCryptoClient.makeKeyFile(self.username, self.passwd)
+        encryptedName = DCCryptoClient.encryptName(name, keyfile)
+        encryptedPath = DCCryptoClient.encryptPath(self.wd)
 
-        except Exception, e:
-            return "Unable to create directory: ", name
+        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedName,
+                                        False,
+                                        True)
 
         return "Created directory: ", name
 
     def read(args):
-        name = args
+        name = args[0]
 
         #get encrypted keyfile name
-        encryptedKeyName = DarkCloudCryptoLib.encryptName("." + name)
-        encryptedPath = DarkCloudCryptoLib.encryptPath(self.wd)
+        encryptedKeyFileName = DCCryptoClient.encryptKeyFileName("." + name, self.passwd)
 
-        try:
-            command = {'method': 'read', 
-                       'path': encryptPath, 
-                       'name': encryptedKeyName}
-            keyfileContent = HttpClientLib.sendCommand(command)
+        #TODO:check that keys exist for all parts of the encrypted path
 
-            keyObj = Key(self.passwd, keyfileContent)
-            encryptedName = DarkCloudCryptoLib.encryptName(name, keyObj)
+        encryptedPath = DCCryptoClient.encryptPath(self.wd)
 
+        #request keyfile
+        keyfileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
 
+        #construct key object
+        keyObj = Key(self.passwd, keyfileContent)
 
-        except Exception, e:
-            return "Unable to read file: ", name
+        #save keyobj for later
+        DCCryptoClient.addKeyObj('.' + name, keyObj)
 
-        return "Created file: ", name
+        #request encrypted file using encrypted file name
+        encryptedFileName = DCCryptoClient.encryptName(name, keyObj)
 
-    def write():
-        pass
+        encryptedFileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedFileName)
+
+        #decrypt file contents
+        decryptedFileContent = DCCryptoClient.decryptFile(encryptedFileContent, keyObj)
+
+        #write decrypted content to new temporary file
+        with open('tmp/' + name, 'w') as f:
+            f.write(decryptedFileContent)
+
+        return "Created temporary file: " + name + "in location: " + os.getcwd() + "/tmp/" + name
+
+    def write(args):
+        name = args[0]
+        content = ""
+
+        #TODO: If file doesn't exist create it
+
+        #read temprorary contents from temp file
+        with open('tmp/' + name, 'r') as content_file:
+            content = content_file.read()
+
+        #get associated key for this file
+        if DCCryptoClient.hasKey('.' + name):
+            keyfile = DCCryptoClient.getKey('.' + name)
+        else:
+            #request keyfile
+            encryptedKeyFileName = DCCryptoClient.encryptKeyFileName("." + name, self.passwd)
+            encryptedPath = DCCryptoClient.encryptPath(self.wd)
+            keyfileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
+            keyfile = Key(self.passwd, keyfileContent)
+
+        #encrypt file's new contents
+        encryptedContent = DCCryptoClient.encryptFile(content, keyfile)
+
+        #craft write request to server
+        encryptedFileName = DCCryptoClient.encryptName(name, keyfile)
+        encryptedPath = DCCryptoClient.encryptPath(self.wd)
+
+        self.HttpClient.sendWriteRequest(encryptedPath + '/' + encryptedFileName,
+                                         encryptedContent)
+
+        return name + " written"
+
+    def delete(args):
+        name = args[0]
+
+        #------- request to delete key file ----------
+        #get encrypted keyfile name
+        encryptedKeyFileName = DCCryptoClient.encryptKeyFileName("." + name, self.passwd)
+        encryptedPath = DCCryptoClient.encryptPath(self.wd)
+
+        #request keyfile
+        command = {'method': 'read', 
+                   'path': encryptPath, 
+                   'name': encryptedKeyFileName}
+        keyfileContent = self.HttpClient.sendCommand(command)
+
+        #construct key object
+        keyObj = Key(self.passwd, keyfileContent)
+
+        #request encrypted file using encrypted file name
+        encryptedFileName = DCCryptoClient.encryptName(name, keyObj)
+
+        #---------- request to delete file -----------
+        #delete keyfile
+        command = {'method': 'delete', 
+                   'path': encryptPath, 
+                   'name': encryptedKeyFileName}
+        self.HttpClient.sendCommand(command)
+
+        #delete file
+        command = {'method': 'delete', 
+                   'path': encryptPath, 
+                   'name': encryptedFileName}
+        self.HttpClient.sendCommand(command)
+
+        # -- request to change parent directory structure --
+        command = {'method': 'read', 
+                   'path': encryptedPath}
+        encryptedFileContent = self.HttpClient.sendCommand(command)
+
+        #decrypt file contents
+        decryptedFileContent = DCCryptoClient.decryptFile(encryptedFileContent, keyObj)
+
+        #remove file name from directory
+        newContent = "" #TODO: MARCEL - clear the line in the directory to send back
+
+        #encrypt file's new contents
+        encryptedContent = DCCryptoClient.encryptFile(newContent, keyfile)
+
+        #craft write request to server
+        encryptedFileName = DCCryptoClient.encryptName(name, keyfile)
+        encryptedPath = DCCryptoClient.encryptPath(self.wd)
+
+        command = {'method': 'write',  
+                   'path': encryptedPath,
+                   'content': encryptedContent}
+
+        self.HttpClient.sendCommand(command)
+
+        return
+
+    def rename(args):
+
 
     def login(args):
         if len(args) != 2:
@@ -99,7 +189,7 @@ class DarkCloudClient:
         if self.username:
             raise CommandError("Already logged in.")
 
-        HttpClientLib
+        self.HttpClient
         self.username = args[0]
         self.passwd = args[1]
 
@@ -125,13 +215,14 @@ class DarkCloudClient:
 
 
     commands = {
-        'create': self.create,
+        'create': self.createFile,
         'delete': self.delete,
         'read': self.read,
         'write': self.write,
         'rename': self.rename,
         'login': self.login,
-        'mkdir': self.mkdir
+        'mkdir': self.mkdir,
+        'logout': self.logout,
     }
 
     def run_command(cmd, args):
