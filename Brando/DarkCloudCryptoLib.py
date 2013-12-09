@@ -102,10 +102,6 @@ class DCCryptoClient:
         #adds a key=name maping to value=keyObj to the dictionary
         self.pathsToKeys[pathname] = keyObj
 
-    def encryptPath(self, wd):
-        #"recursively" retur an encrypted path
-        pass
-
     def getKey(self, pathname):
         return self.htKeys.get(pathname)
 
