@@ -1,6 +1,7 @@
 from Crypto.PublicKey import RSA
 from Crypto import Random
 import hashlib
+import sys
 
 print "<----------RSA TESTING STARTING---------->\n"
 fileTableName = "fileTableName"
@@ -9,10 +10,9 @@ password = "kitty"
 plain_text = "abcdefgh"
 
 random_generator = Random.new().read
-key = RSA.generate(1024, random_generator)
-exportedKey = key.exportKey('PEM', password, pkcs=1)
-key = RSA.importKey(exportedKey, password)
-public_key = key.publickey()
+key = RSA.generate(1024, random_generator) #rsaObj
+exportedKey = key.exportKey('DER', password, pkcs=1) #returns type string
+key = RSA.importKey(exportedKey)
 
 ##Some methods of keys
 print "can_encrypt: ", key.can_encrypt()
@@ -49,4 +49,6 @@ signature_to_verify = (decrypted_signature, )
 #VERIFYING
 #print "TEST: ", signature[0] == long(str(signature[0]))
 #print "Verfification result: ", public_key.verify(hash_val, signature)
+public_key = key.publickey()
+print type(public_key)
 print "Verfification result: ", public_key.verify(hash_val, signature_to_verify)

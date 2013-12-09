@@ -17,6 +17,7 @@ key = RSA.generate(1024, random_generator)
 
 #ENCRYPTION
 public_key = key.publickey()
+print "TYPE: ", public_key
 text = 'abcdefgh'
 enc_data = public_key.encrypt(text, 32)
 print "<------------RSA Scrypt started running------------>"
