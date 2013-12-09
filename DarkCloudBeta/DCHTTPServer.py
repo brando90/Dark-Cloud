@@ -5,42 +5,41 @@ import os
 import urllib
 from urlparse import urlparse, parse_qs
 
+# *** Methods ***
+Create = 'create'
+Read = 'read'
+Write = 'write'
+Rename = 'rename'
+Delete = 'delete'
+# ---------------
+
+
+# *** Query string keys ***
+Method = 'method'
+File = 'file'
+Dir = 'dir'
+# -------------------------
+
 class DCHTTPRequestHandler(BaseHTTPRequestHandler):
-	
-	# *** Methods ***
-	Create = 'create'
-	Read = 'read'
-	Write = 'write'
-	Rename = 'rename'
-	Delete = 'delete'
-	# ---------------
-
-
-	# *** Query string keys ***
-	Method = 'method'
-	File = 'file'
-	Dir = 'dir'
-	# -------------------------
-
-
 	# *** 'Overridden' methods ***
 
-	def __init__(self, *args, **kwargs):
-		BaseHTTPServer.HTTPServer.__init__(self, *args, **kwargs)
+	def __init__(self, *args):
+		BaseHTTPRequestHandler.__init__(self, *args)
 		self.encryptedURL = None
 
 	def setup(self):
 		#TODO: Verify this gets called on a per-request basis
 		BaseHTTPRequestHandler.setup(self)
-		self.url = self.parseURL()
+		#self.encryptedURL = self.parseURL()
 
 	# Create
 	def do_PUT(self):
-		encryptedPath = self.url.path
-		method = self.getQueryMethod()
+		self.encryptedURL = self.parseURL()
+		encryptedPath = self.encryptedURL.path
+		method = self.getMethod()
 		encryptedContents = self.getEncryptedBody()
-		isFile = self.toBoolean(newFile())
-		isDir = self.toBoolean(newDir())
+		isFile = self.toBoolean(self.newFile())
+		isDir = self.toBoolean(self.newDir())
 
 		if method != Create:
 			self.send_error(405, "PUT requests must have method set to 'create'")
@@ -58,8 +57,9 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# Read
 	def do_GET(self):
-		encryptedPath = self.url.path
-		method = self.getQueryMethod()
+		self.encryptedURL = self.parseURL()
+		encryptedPath = self.encryptedURL.path
+		method = self.getMethod()
 		
 		if method != Read:
 			self.send_error(405, "GET requests must have method set to 'read'")
@@ -74,8 +74,9 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# Write, Rename
 	def do_POST(self):
-		encryptedPath = self.url.path
-		method = self.getQueryMethod()
+		self.encryptedURL = self.parseURL()
+		encryptedPath = self.encryptedURL.path
+		method = self.getMethod()
 		newEncryptedContents = None # initialized if method is Write
 		newEncryptedPath = None # initialized if method is Rename
 
@@ -94,8 +95,9 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# Delete
 	def do_DELETE(self):
-		encryptedPath = self.url.path
-		method = self.getQueryMethod()
+		self.encryptedURL = self.parseURL()
+		encryptedPath = self.encryptedURL.path
+		method = self.getMethod()
 
 		if method != Delete:
 			self.send_error(405, "Delete requests must have method set to 'delete'")
@@ -126,7 +128,8 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		return urlparse(self.path)
 
 	def getQueryArg(self, key):
-		return parse_qs(self.encryptedURL.query).get(key)
+		print key + " : " + repr(parse_qs(self.encryptedURL.query).get(key)[0])
+		return parse_qs(self.encryptedURL.query).get(key)[0]
 
 	def getMethod(self):
 		return self.getQueryArg(Method)
@@ -149,7 +152,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def createFile(self, encryptedPath, encryptedContents):
 		# create file
 		fd = open(encryptedPath, 'w+')
-		os.write(fd, encryptedContents)
+		fd.write(encryptedContents)
 
 		self.send_response(200)
 
@@ -164,7 +167,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		return
 
 	def readFile(self, encryptedPath):
-		fd = open(encryptedPath)
+		fd = open(encryptedPath, 'r')
 
 		self.send_response(200)
 		self.send_header('Content-type', 'text')
@@ -186,7 +189,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	def writeFile(self, encryptedPath, newEncryptedContents):
 		# overwrite file contents
-		fd = open(encryptedPath)
+		fd = open(encryptedPath, 'w')
 		fd.seek(0)
 		fd.write(newEncryptedContents)
 		fd.truncate()
