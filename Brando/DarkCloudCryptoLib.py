@@ -8,11 +8,62 @@ class DCKey:
     def __init__(self):
         pass
 
-    def unlock(self, contentToUnlock):
-        pass
+    def unlock(self, secureData):
 
-    def lock(self, contentToLock):
-        pass
+        return plainText
+
+    def lock(self, plainText):
+        dcSignature = self.makeDCsignature(plainText)
+        secureData = self.makeDCEncryption(dcSignature)
+        return secureData
+
+    def makeDCSignature(self, plaintext):
+        hashVal = hashlib.sha256(plainText).digest()
+        (rsaSignature, nothin) = key.sign(hashVal, '')
+        rsaSignature = str(rsaSignature)
+        dcSignature = str(len(plainText))+ ","+ plainText + signature
+        return dcSignature
+
+    def makeDCEncryption(self, dcSignature):
+        remainder = len(dcSignature) % 16
+        amountPadding = 16 - remainder
+        encryptor = AES.new(self.keyAES, AES.MODE_CBC, self.iv)
+        if(amountPadding == 0):
+            data = (" " * 15)+","+dcSignature
+        else:
+            data = (" " * amountPadding - 1)+","+dcSignature
+        dcEncryptedData = encryptor.encrypt(data)
+        return dcEncryptedData
+
+    def dcDecrypt(self, secureData):
+        decryptor = AES.new(self.keyAES, AES.MODE_CBC, self.iv)
+        dcSignature = decryptor.decrypt(secureData)
+        for i in range(0,len(dcSignature)):
+            c = dcSignature[i]
+            if c == ",":
+                break
+        return dcSignature[i+1:]
+
+    def dcVerify(self, dcSignature):
+        l = ""
+        for i in range(0,len(dcSignature)):
+            c = dcSignature[i]
+            if c == ",":
+                break
+            l += c
+        index_signature = i + 1 + l
+        plainText = dcSignature[i:index_signature]
+        rsaSignature = dcSignature[index_signature:]
+        rsaSignature = long(rsaSignature)
+        signature_to_verify = (rsaSignature, )
+        hash_val = hashlib.sha256(plain_text).digest()
+        if public_key.verify(hash_val, signature_to_verify):
+            return plaintext
+        else:
+            return None
+
+
+
 
 class DCTableKey(DCkey):
     __init__(self, password, username, keyFilename):
@@ -22,17 +73,10 @@ class DCTableKey(DCkey):
         self.iv = makeIV(self.keyAES, keyFilename)
         self.rsaKeyObj = makeRSAKeyObj(password)
 
-    def unlock(self, keyTableFileContent):
-
-        return originalData
 
 class DCFileKey(DCKey):
     __init__(self, ):
-        
-
-
-
-
+        pass
 
 class DCCryptoClient:
     def __init__(self):
@@ -77,7 +121,6 @@ class DCCryptoClient:
         #generate secure file
         tableKey = DCTableKey(password, username, keyFilename)
         secureKeyTableFileData = tableKey.lock(keyFileData)
-
         return secureKeyTableFileData #string
 
 
@@ -101,31 +144,10 @@ def makeRSAKeyObj(password):
     key = RSA.importKey(exportedKey)
     return key
 
-def encrypt_file(password, key_filename, file_name):
-    iv = ''.join(chr(random.randint(0, 0xFF)) for i in range(16))
-    encryptor = AES.new(key, AES.MODE_CBC, iv)
-    filesize = os.path.getsize(file_name)
 
-    with open(file_name, 'r') as f:
-        file_data = f.read()
-        delta = 0
-        if len(file_data) % 16 != 0:
-            delta = (16 - len(file_data)) % 16
-            file_data += (' ' * delta)
-        meta_data = str(filesize)+"\n"+str(iv)+"\n"+str(delta)
-        return encryptor.encrypt(file_data)
-
-def decrypt_file(key, file_name):
-    with open(file_name, 'r') as f:
-        origsize = struct.unpack('<Q', f.read(struct.calcsize('Q')))[0]
-        iv = f.read(16)
-        decryptor = AES.new(key, AES.MODE_CBC, iv)
-        while True:
-            file_data = f.read()
-            outfile.write(decryptor.decrypt(chunk))
-
-        outfile.truncate(origsize)
+#keyFileData = DCCryptoClient().makeKeyFile("orochimaru" , "kitty")
+#print keyFileData
+tableKey = DCTableKey('password', 'username', 'keyFilename')
+tableKey.lock("")
 
 
-keyFileData = DCCryptoClient().makeKeyFile("orochimaru" , "kitty")
-print keyFileData

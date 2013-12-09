@@ -22,7 +22,10 @@ print "has_private: ", key.has_private()
 #SIGNING
 hash_val = hashlib.sha256(plain_text).digest()
 signature = key.sign(hash_val, '')
-print signature
+print signature #tuple = ( <string> key, )
+print type(hash_val)
+#print type(signature[0])
+sys.exit(0)
 #print "signature: ",signature
 
 print "<----------AES-CBC TEST STARTING---------->\n"
