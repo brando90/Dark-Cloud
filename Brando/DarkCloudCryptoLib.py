@@ -68,13 +68,66 @@ class DCTableKey(DCKey):
         #when making keys from password for a specific keyFilename
         salt = hashlib.sha256(username).digest()
         self.keyAES = makeKeyAES(password, salt)
-        saltIv = str(hashlib.sha256(str(randStr)))
+        saltIv = str(hashlib.sha256(str(keyFilename)))
         self.iv = makeIV(self.keyAES, saltIv)
         self.rsaKeyObj = makeRSAKeyObj(password)
 
 
 class DCFileKey(DCKey):
-    def __init__(self, secureKeyFileData, keyObj):
+    def __init__(self, iv, keyAES, rsaRandNum):
+        self.keyAES = keyAES
+        self.iv = iv
+        self.rsaRandNum = rsaRandNum
+        self.rsaKeyObj = makeRSAKeyObj(rsaRandNum)
+
+    def toSecureString(self, username, password, keyFileName):
+        #generate keys
+        ivLen = len(self.iv)
+        keyAESLen = len(self.keyAES)
+        rsaRandNumLen = len(self.rsaRandNum)
+        #generate plain text file data
+        keyFileData = str(ivLen)+","+str(keyAESLen)+","+str(rsaRandNumLen)+","+self.iv+self.keyAES+self.rsaRandNum
+        #generate secure file
+        tableKey = DCTableKey(username, password, keyFilename)
+        secureKeyTableFileData = tableKey.lock(keyFileData)
+        return secureKeyTableFileData #string
+
+
+class DCCryptoClient:
+    def __init__(self):
+        #maps name of file to its key object
+        self.pathsToKeys = {}
+
+    def addKeyObj(self, pathname, keyObj):
+        #adds a key=name maping to value=keyObj to the dictionary
+        self.pathsToKeys[pathname] = keyObj
+
+    def encryptPath(self, wd):
+        #"recursively" retur an encrypted path
+        pass
+
+    def getKey(self, pathname):
+        return self.htKeys.get(pathname)
+
+    def encryptName(self, name, keyObj):
+        return keyObj.makeDCEncryption(name) 
+
+    def encryptFile(self, fileContent, keyObj):
+        return keyObj.lock(fileContent)
+
+    def decryptFile(self, secureFileContent, keyObj):
+        return keyObj.unlock(secureFileContent)
+
+    def createKeyFileObj(self):
+        #generate keys
+        iv = str(makeIV(os.urandom(32))) #size = 16
+        keyAES = str(makeKeyAES(os.urandom(32))) #size = 32
+        rsaRandNum = str(os.urandom(32)) # size = 32
+        keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
+        return keyFileObj
+
+    def makeKeyFileObjFromSecureKeyData(self, secureKeyFileData, username, password, keyFileName):
+        keyObj = DCTableKey(username, password, keyFileName)
         keyFileData = keyObj.unlock(secureKeyFileData)
         keysLengths = []
         commas = 0
@@ -93,72 +146,12 @@ class DCFileKey(DCKey):
         keyAESLen = keysLengths[1]
         rsaKeyObjLen = keysLengths[2]
         startKeyAES = i+1+ivLen
-        self.iv = secureKeyFileData[i+1:startKeyAES]
+        iv = secureKeyFileData[i+1:startKeyAES]
         startRSAnum = startKeyAES+keyAESLen
-        self.keyAES = secureKeyFileData[startKeyAES:startRSAnum]
+        keyAES = secureKeyFileData[startKeyAES:startRSAnum]
         rsaRandNum = secureKeyFileData[startRSAnum:]
-        self.rsaKeyObj = makeRSAKeyObj(rsaRandNum)
-
-    def toSecureString(self, username, password, keyFileName):
-        #generate keys
-        iv = str(makeIV(os.urandom(32))) #size = 16
-        keyAES = str(makeKeyAES(os.urandom(32))) #size = 32
-        rsaRandNum = str(os.urandom(32)) # size = 32
-        ivLen = len(iv)
-        keyAESLen = len(keyAES)
-        rsaRandNumLen = len(rsaRandNum)
-        #generate plain text file data
-        keyFileData = str(ivLen)+","+str(keyAESLen)+","+str(rsaRandNumLen)+","+iv+keyAES+rsaRandNum
-        #generate secure file
-        tableKey = DCTableKey(username, password, keyFilename)
-        secureKeyTableFileData = tableKey.lock(keyFileData)
-        return secureKeyTableFileData #string
-
-
-class DCCryptoClient:
-    def __init__(self):
-        #maps name of file to its key object
-        self.htKeys = {}
-
-    def addKeyObj(self, name, keyObj):
-        #adds a key=name maping to value=keyObj to the dictionary
-        pass
-
-    def encryptPath(self, wd):
-        #"recursively" retur an encrypted path
-        pass
-
-    def getKey(self, name):
-        return self.htKeys[name]
-
-    def encryptName(self, name, keyObj):
-        #returns E[name, keyObj]
-        pass
-
-    def encryptKeyFileName(self, keyFileName, password):
-
-        pass
-
-    def encryptFile(self, fileContent, keyObj):
-        pass
-
-    def decryptFile(self, keyObj):
-        pass
-
-    def createSecureKeyFile(self, username, password, keyFileName):
-        #generate keys
-        iv = str(makeIV(os.urandom(32))) #size = 16
-        keyAES = str(makeKeyAES(os.urandom(32))) #size = 32
-        rsaRandNum = str(os.urandom(32)) # size = 32
-        ivLen = len(iv)
-        keyAESLen = len(keyAES)
-        rsaRandNumLen = len(rsaRandNum)
-        #generate plain text file data
-        keyFileData = str(ivLen)+","+str(keyAESLen)+","+str(rsaRandNumLen)+","+iv+keyAES+rsaRandNum
-        #generate secure file
-        tableKey = DCTableKey(username, password, keyFilename)
-        secureKeyTableFileData = tableKey.lock(keyFileData)
-        return secureKeyTableFileData #string
+        keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
+        return keyFileObj
 
 
 def encryptAES(keyAES, iv, plainText, mode = AES.MODE_CBC):
