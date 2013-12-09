@@ -9,22 +9,23 @@ class DCKey:
         pass
 
     def unlock(self, secureData):
-
+        dcSignature = self.dcDecrypt(secureData)
+        plaintext = self.dcVerify(dcSignature)
         return plainText
 
     def lock(self, plainText):
-        dcSignature = self.makeDCsignature(plainText)
-        secureData = self.makeDCEncryption(dcSignature)
+        dcSignature = self.dcSign(plainText)
+        secureData = self.dcEncript(dcSignature)
         return secureData
 
-    def makeDCSignature(self, plaintext):
+    def dcSign(self, plaintext):
         hashVal = hashlib.sha256(plainText).digest()
         (rsaSignature, nothin) = key.sign(hashVal, '')
         rsaSignature = str(rsaSignature)
         dcSignature = str(len(plainText))+ ","+ plainText + signature
         return dcSignature
 
-    def makeDCEncryption(self, dcSignature):
+    def dcEncript(self, dcSignature):
         remainder = len(dcSignature) % 16
         amountPadding = 16 - remainder
         encryptor = AES.new(self.keyAES, AES.MODE_CBC, self.iv)
@@ -51,77 +52,109 @@ class DCKey:
             if c == ",":
                 break
             l += c
-        index_signature = i + 1 + l
-        plainText = dcSignature[i:index_signature]
+        index_signature = i + 1 + int(l)
+        plainText = dcSignature[i+1:index_signature]
         rsaSignature = dcSignature[index_signature:]
-        rsaSignature = long(rsaSignature)
-        signature_to_verify = (rsaSignature, )
+        signature_to_verify = (long(rsaSignature), ) #tuple for rsa pycrypto should have (rsa_signature, )
         hash_val = hashlib.sha256(plain_text).digest()
+        public_key = self.rsaKeyObj.publickey()
         if public_key.verify(hash_val, signature_to_verify):
             return plaintext
         else:
-            return None
+            raise ValueError("Verification failed")
 
-
-
-
-class DCTableKey(DCkey):
-    __init__(self, password, username, keyFilename):
+class DCTableKey(DCKey):
+    def __init__(self, username, password, pathToKeyFilename):
         #when making keys from password for a specific keyFilename
         salt = hashlib.sha256(username).digest()
         self.keyAES = makeKeyAES(password, salt)
-        self.iv = makeIV(self.keyAES, keyFilename)
+        saltIv = str(hashlib.sha256(str(keyFilename)))
+        self.iv = makeIV(self.keyAES, saltIv)
         self.rsaKeyObj = makeRSAKeyObj(password)
 
 
 class DCFileKey(DCKey):
-    __init__(self, ):
-        pass
+    def __init__(self, iv, keyAES, rsaRandNum):
+        self.keyAES = keyAES
+        self.iv = iv
+        self.rsaRandNum = rsaRandNum
+        self.rsaKeyObj = makeRSAKeyObj(rsaRandNum)
+
+    def toSecureString(self, username, password, pathToKeyFilename):
+        #generate keys
+        ivLen = len(self.iv)
+        keyAESLen = len(self.keyAES)
+        rsaRandNumLen = len(self.rsaRandNum)
+        #generate plain text file data
+        keyFileData = str(ivLen)+","+str(keyAESLen)+","+str(rsaRandNumLen)+","+self.iv+self.keyAES+self.rsaRandNum
+        #generate secure file
+        tableKey = DCTableKey(username, password, pathToKeyFilename)
+        secureKeyTableFileData = tableKey.lock(keyFileData)
+        return secureKeyTableFileData #string
+
 
 class DCCryptoClient:
     def __init__(self):
         #maps name of file to its key object
-        self.htKeys = {}
+        self.pathsToKeys = {}
 
-    def addKeyObj(self, name, keyObj):
+    def addKeyObj(self, pathname, keyObj):
         #adds a key=name maping to value=keyObj to the dictionary
-        pass
+        self.pathsToKeys[pathname] = keyObj
 
     def encryptPath(self, wd):
         #"recursively" retur an encrypted path
         pass
 
-    def getKey(self, name):
-        return self.htKeys[name]
+    def getKey(self, pathname):
+        return self.htKeys.get(pathname)
 
     def encryptName(self, name, keyObj):
-        #returns E[name, keyObj]
-        pass
+        return keyObj.dcEncrypt(name) 
 
-    def encryptKeyFileName(self, keyFileName, password):
-
-        pass
+    def dencryptName(self, encryptname, keyObj):
+        return keyObj.dcDecrypt(encryptname)
 
     def encryptFile(self, fileContent, keyObj):
-        pass
+        return keyObj.lock(fileContent)
 
-    def decryptFile(self, keyObj):
-        pass
+    def decryptFile(self, secureFileContent, keyObj):
+        return keyObj.unlock(secureFileContent)
 
-    def makeSecureKeyFile(self, username, password, keyFileName):
+    def createKeyFileObj(self):
         #generate keys
-        iv = makeIV(os.urandom(32)) #size = 16
-        keyAES = makeKeyAES(os.urandom(32)) #size = 32
-        rsaRandNum = os.urandom(32) # size = 32
-        ivLen = len(iv)
-        keyAES = len(keyAES)
-        rsaRandNum = len(rsaRandNum)
-        #generate plain text file data
-        keyFileData = str(ivLen)+","+str(keyAES)+","+str(rsaRandNum)+","+str(iv)+str(keyAES)+str(rsaRandNum)
-        #generate secure file
-        tableKey = DCTableKey(password, username, keyFilename)
-        secureKeyTableFileData = tableKey.lock(keyFileData)
-        return secureKeyTableFileData #string
+        iv = str(makeIV(os.urandom(32))) #size = 16
+        keyAES = str(makeKeyAES(os.urandom(32))) #size = 32
+        rsaRandNum = str(os.urandom(32)) # size = 32
+        keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
+        return keyFileObj
+
+    def makeKeyFileObjFromSecureKeyData(self, secureKeyFileData, username, password, keyFileName):
+        keyObj = DCTableKey(username, password, keyFileName)
+        keyFileData = keyObj.unlock(secureKeyFileData)
+        keysLengths = []
+        commas = 0
+        currentKeyLength = ""
+        for i in range(0,keyFileData):
+            c = keyFileData[i]
+            if (c != ","):
+                currentKeyLength+=c
+            else:
+                keysLengths.append(currentKeyLength)
+                currentKeyLength = ""
+                commas += 1
+                if(commas == 3):
+                    break
+        ivLen = keysLengths[0]
+        keyAESLen = keysLengths[1]
+        rsaKeyObjLen = keysLengths[2]
+        startKeyAES = i+1+ivLen
+        iv = secureKeyFileData[i+1:startKeyAES]
+        startRSAnum = startKeyAES+keyAESLen
+        keyAES = secureKeyFileData[startKeyAES:startRSAnum]
+        rsaRandNum = secureKeyFileData[startRSAnum:]
+        keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
+        return keyFileObj
 
 
 def encryptAES(keyAES, iv, plainText, mode = AES.MODE_CBC):
@@ -133,8 +166,7 @@ def makeKeyAES(password, salt = os.urandom(32)):
         keyAES = pbkdf2.PBKDF2(str(password), str(salt)).read(32)
         return keyAES
 
-def makeIV(key, randStr = os.urandom(32)):
-    salt = str(hashlib.sha256(str(randStr)))
+def makeIV(key, salt = os.urandom(32)):
     iv = pbkdf2.PBKDF2(str(key), salt).read(16)
     return iv
 
