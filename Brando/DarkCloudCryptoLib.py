@@ -14,18 +14,18 @@ class DCKey:
         return plainText
 
     def lock(self, plainText):
-        dcSignature = self.makeDCsignature(plainText)
-        secureData = self.makeDCEncryption(dcSignature)
+        dcSignature = self.dcSign(plainText)
+        secureData = self.dcEncript(dcSignature)
         return secureData
 
-    def makeDCSignature(self, plaintext):
+    def dcSign(self, plaintext):
         hashVal = hashlib.sha256(plainText).digest()
         (rsaSignature, nothin) = key.sign(hashVal, '')
         rsaSignature = str(rsaSignature)
         dcSignature = str(len(plainText))+ ","+ plainText + signature
         return dcSignature
 
-    def makeDCEncryption(self, dcSignature):
+    def dcEncript(self, dcSignature):
         remainder = len(dcSignature) % 16
         amountPadding = 16 - remainder
         encryptor = AES.new(self.keyAES, AES.MODE_CBC, self.iv)
@@ -64,7 +64,7 @@ class DCKey:
             raise ValueError("Verification failed")
 
 class DCTableKey(DCKey):
-    def __init__(self, username, password, keyFilename):
+    def __init__(self, username, password, pathToKeyFilename):
         #when making keys from password for a specific keyFilename
         salt = hashlib.sha256(username).digest()
         self.keyAES = makeKeyAES(password, salt)
@@ -80,7 +80,7 @@ class DCFileKey(DCKey):
         self.rsaRandNum = rsaRandNum
         self.rsaKeyObj = makeRSAKeyObj(rsaRandNum)
 
-    def toSecureString(self, username, password, keyFileName):
+    def toSecureString(self, username, password, pathToKeyFilename):
         #generate keys
         ivLen = len(self.iv)
         keyAESLen = len(self.keyAES)
@@ -88,7 +88,7 @@ class DCFileKey(DCKey):
         #generate plain text file data
         keyFileData = str(ivLen)+","+str(keyAESLen)+","+str(rsaRandNumLen)+","+self.iv+self.keyAES+self.rsaRandNum
         #generate secure file
-        tableKey = DCTableKey(username, password, keyFilename)
+        tableKey = DCTableKey(username, password, pathToKeyFilename)
         secureKeyTableFileData = tableKey.lock(keyFileData)
         return secureKeyTableFileData #string
 
@@ -110,7 +110,10 @@ class DCCryptoClient:
         return self.htKeys.get(pathname)
 
     def encryptName(self, name, keyObj):
-        return keyObj.makeDCEncryption(name) 
+        return keyObj.dcEncrypt(name) 
+
+    def dencryptName(self, encryptname, keyObj):
+        return keyObj.dcDecrypt(encryptname)
 
     def encryptFile(self, fileContent, keyObj):
         return keyObj.lock(fileContent)
