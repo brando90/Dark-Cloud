@@ -2,6 +2,7 @@
 
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import os
+import sys
 import urllib
 from urlparse import urlparse, parse_qs
 
@@ -226,12 +227,20 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 # *** Run Dark Cloud Beta Server ***
 
 def run():
-	# ip and port
-	server_address = ('127.0.0.1', 8080)
-	print('Dark Cloud Beta server is starting at: ' + repr(server_address))
-	httpd = HTTPServer(server_address, DCHTTPRequestHandler)
-	print('Dark Cloud Beta server is now running...')
-	httpd.serve_forever()
+	try:
+		# ip and port
+		host = '127.0.0.1'
+		port = 8080
+		if len(sys.argv) == 3:
+			host = sys.argv[1]
+			port = int(sys.argv[2])
+		server_address = (host, port)
+		print('Dark Cloud Beta server is starting at host:%s & port:%s' % server_address)
+		httpd = HTTPServer(server_address, DCHTTPRequestHandler)
+		print('Dark Cloud Beta server is now running...')
+		httpd.serve_forever()
+	except EOFError:
+		print '\nServer closed'
 
 if __name__ == '__main__':
 	run()

@@ -9,30 +9,49 @@ import os
 class CommandError(Exception):
     pass
 
-
 class DCClient:
     def __init__():
         self.username = None
         self.passwd = None
-        self.wd = None
+        self.wd = DCWorkingDirectory(self.username, self.passwd)
         self.HttpClient = DCHTTPClient(127.0.0.1, 8080)
+
+    def tableFilename(name):
+        return '.t-' + name
+
+    def lsFilename(name):
+        return '.ls-' + name
 
     def createFile(args):
         name = args[0]
 
-        #request to read parent directory contents to add new files
-
-        #request to create key file on server
         keyfile = DCCryptoClient.createSecureKeyFile(self.username, self.passwd, '.kf-' + name)
         encryptedKeyName = DCCryptoClient.encryptKeyFileName('.kf-' + name, self.passwd)
-        encryptedPath = DCCryptoClient.encryptPath(self.wd)
+        encryptedName = DCCryptoClient.encryptName(name, keyfile)
+        
+        #request to read parent directory contents to add new files
+        parentName = self.wd.pop() # returns name of directory after the last slash
+        directoryContents = readDir(parentName)
+        dirObj = DCDirObj(directoryContents)
+        dirObj.add(encryptedKeyName)
+        dirObj.add(encryptedName)
+        dirObj.sort()
+
+        #request to write the modified directory
+        self.write()
+
+        self.wd.push(parentName)
+
+        #request to create key file on server
+        
+        encryptedPath = self.wd.encrypted_pwd()
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedKeyName,
                                         True,
                                         False,
                                         keyfile)
 
         #request to create regular file on server
-        encryptedName = DCCryptoClient.encryptName(name, keyfile)
+        
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedName,
                                         True,
                                         False,
@@ -45,14 +64,26 @@ class DCClient:
     def mkdir(args):
         name = args[0]
 
-        #request to change parent directory contents
-        parentDirContents = readDir(self.wd)
-
-        #request to create key file and directory on server
         keyfile = DCCryptoClient.createSecureKeyFile(self.username, self.passwd, '.kf-' + name)
         encryptedKeyName = DCCryptoClient.encryptKeyFileName('.kf-' + name, self.passwd)
         encryptedName = DCCryptoClient.encryptName(name, keyfile)
-        encryptedPath = DCCryptoClient.encryptPath(self.wd)
+
+        #request to read parent directory contents to add new directory
+        parentName = self.wd.pop() # returns name of directory after the last slash
+        directoryContents = readDir(parentName)
+        dirObj = DCDirObj(directoryContents)
+        dirObj.add(encryptedKeyName)
+        dirObj.add(encryptedName)
+        dirObj.sort()
+
+        #request to write the modified directory
+        self.write()
+
+        self.wd.push(parentName)
+
+        #request to create key file and directory on server
+        
+        encryptedPath = self.wd.encrypted_pwd()
 
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedKeyName,
                                         True,
@@ -73,7 +104,8 @@ class DCClient:
 
     def read(encryptedName):
         encryptedPath = DCCryptoClient.encryptPath(self.wd)
-        keyfileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
+        content = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
+        return content
 
     def readFile(name):
 
@@ -82,13 +114,10 @@ class DCClient:
 
         #TODO:check that keys exist for all parts of the encrypted path
 
-        encryptedPath = DCCryptoClient.encryptPath(self.wd)
-
-        #request keyfile
-        keyfileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
+        keyfileContent = self.read(encryptKeyFileName)
 
         #construct key object
-        keyObj = Key(self.passwd, keyfileContent)
+        keyObj = DCCryptoClient.makeKeyFileObjFromSecureKeyData(keyfileContent, self.username, self.passwd)
 
         #save keyobj for later
         DCCryptoClient.addKeyObj('.kf-' + name, keyObj)
@@ -96,7 +125,7 @@ class DCClient:
         #request encrypted file using encrypted file name
         encryptedFileName = DCCryptoClient.encryptName(name, keyObj)
 
-        encryptedFileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedFileName)
+        encryptedFileContent = self.read(encryptedFileName)
 
         #decrypt file contents
         decryptedFileContent = DCCryptoClient.decryptFile(encryptedFileContent, keyObj)
@@ -112,7 +141,7 @@ class DCClient:
 
         #TODO:check that keys exist for all parts of the encrypted path
 
-        encryptedPath = DCCryptoClient.encryptPath(self.wd)
+        encryptedPath = self.wd.encrypted_pwd()
 
         #request keyfile
         keyfileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
@@ -289,18 +318,86 @@ class DCClient:
         else:
             print "%s: command not found" % (cmd, )
 
-    def run():
-        try:
-            while True:
-                cmd_str = raw_input(prompt)
-                args = shlex.split(cmd_str)
-                if not args: continue
-                cmd = args[0]
-                run_command(cmd, args[1:])
-        except EOFError:
-            print "\nEnded Session"
+# -------------------------------
+
+
+# *** Working Directory Class ***
+
+class DCWorkingDirectory:
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
+        self.pwd = []
+
+    def root():
+        return '/' + self.username + '/'
+
+    def up(steps=1):
+        for i in range(0, steps):
+            if len(self.pwd) != 0:
+                self.pwd.pop()
+            else:
+                break
+
+    def down(subdirectory):
+        self.pwd.append(subdirectory)
+
+    def pwd():
+        return self.root() + '/'.join(self.pwd)
+
+    def encrypted_pwd():
+        for i in range(0,len(self.pwd)):
+            dirname = self.pwd[0]
+            path = self.root() + '/'.join(self.pwd[:i])
+            # see if we can get the encrypted name without querying the server
+            dirKey = dcCryptoClient.getKey(path)
+            if not dirKey:
+                # get encrypted keytable filename
+                dirTableKey = DCTableKey(self.username, self.password, ktFilename(dirname))
+                encryptedKTFilename = dcCryptoClient.encryptName(ktFilename(dirname))
+                # query the server for the encrypted keytable file
+                # decrypt the keytable file
+                # store key object in crypto client
+            
+            dcCryptoClient.encryptName(dirname, dirKey)
+            # encrypt dirname with key
+
+
+            # otherwise, query the server for the keyfile
+            # encrypt the name
+
+# -----------------------------
+
+class DCDirObj:
+    def __init__(self, directoryContents):
+        self.contents = directoryContents
+
+    def add():
+        pass
+
+    def remove():
+        pass
+
+    def sort():
+        pass
+
+# -----------------------------
+
+
+# *** Run Dark Cloud Client ***
+
+def run():
+    client = DarkCloudClient()
+    try:
+        while True:
+            cmd_str = raw_input(prompt)
+            args = shlex.split(cmd_str)
+            if not args: continue
+            cmd = args[0]
+            client.run_command(cmd, args[1:])
+    except EOFError:
+        print "\nEnded Session"
 
 
 if __name__ == '__main__':
-    client = DarkCloudClient()
-    client.run()
+    run()
