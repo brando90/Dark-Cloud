@@ -11,6 +11,17 @@ class DCKey:
     def __init__(self):
         pass
 
+    def __str__(self):
+        s="----DCKey print----\n"
+        s+="----\n"
+        s+="iv: "+self.iv+"\n"
+        s+="----\n"+"\n"
+        s+="keyAES: "+self.keyAES+"\n"
+        s+="----\n"
+        s+="RSAObj: "+str(self.rsaKeyObj)+"\n"
+        s+="----\n"
+        return s
+
     def unlock(self, secureData):
         dcSignature = self.dcDecrypt(secureData)
         plaintext = self.dcVerify(dcSignature)
@@ -114,6 +125,23 @@ class DCFileKey(DCKey):
         secureKeyTableFileData = tableKey.lock(keyFileData)
         return secureKeyTableFileData #string
 
+    def __eq__(self, otherKey):
+        if not isinstance(otherKey, DCFileKey):
+            return False
+        boolean = (otherKey.keyAES == self.keyAES)
+        # print "AES Key: ", (otherKey.keyAES,self.keyAES)
+        # print "AES: ", boolean
+        boolean = boolean and (self.iv == otherKey.iv)
+        #print "iv: ", boolean
+        boolean = boolean and equalRSAKeys(self.rsaKeyObj, otherKey.rsaKeyObj)
+        #print "rsaKeyObj equality: ", boolean
+        return boolean
+
+    def __ne__(self, otherKey):
+        return not self.__eq__(otherKey)
+
+
+
 
 class DCCryptoClient:
     def __init__(self):
@@ -144,7 +172,6 @@ class DCCryptoClient:
         iv = str(makeIV(os.urandom(32))) #size = 16
         keyAES = str(makeKeyAES(os.urandom(32))) #size = 32
         rsaRandNum = str(os.urandom(32)) # size = 32
-        salt = os.urandom(32)
         keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
         return keyFileObj
 
@@ -154,7 +181,7 @@ class DCCryptoClient:
         keysLengths = []
         commas = 0
         currentKeyLength = ""
-        for i in range(0,keyFileData):
+        for i in range(0,len(keyFileData)):
             c = keyFileData[i]
             if (c != ","):
                 currentKeyLength+=c
@@ -164,14 +191,15 @@ class DCCryptoClient:
                 commas += 1
                 if(commas == 3):
                     break
-        ivLen = keysLengths[0]
-        keyAESLen = keysLengths[1]
-        rsaKeyObjLen = keysLengths[2]
+        ivLen = int(keysLengths[0])
+        keyAESLen = int(keysLengths[1])
+        rsaKeyObjLen = int(keysLengths[2])
         startKeyAES = i+1+ivLen
-        iv = secureKeyFileData[i+1:startKeyAES]
         startRSAnum = startKeyAES+keyAESLen
-        keyAES = secureKeyFileData[startKeyAES:startRSAnum]
-        rsaRandNum = secureKeyFileData[startRSAnum:]
+
+        iv = keyFileData[i+1:startKeyAES]
+        keyAES = keyFileData[startKeyAES:startRSAnum]
+        rsaRandNum = keyFileData[startRSAnum:]
         keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
         return keyFileObj
 
@@ -201,6 +229,8 @@ def equalRSAKeys(rsaKey1, rsaKey2):
     return (boolprivate and boolpublic)
 
 def makeRSAKeyObj(password, salt):
+    #careful with changing this function.
+    #if you don't know how it works, changing it might break the library completely.
     master_key = PBKDF2(password, salt, count=10000)  # bigger count = better
     def my_rand(n):
         # PBKDF2 with count=1 and a variable salt makes a handy key-expander
