@@ -20,7 +20,7 @@ print "can_sign: ", key.can_sign()
 print "has_private: ", key.has_private()
 
 #SIGNING
-hash_val = hashlib.sha256(plain_text).digest()
+hash_val = hashlib.sha256(plain_text).digest() #string
 signature = key.sign(hash_val, '')
 print signature #tuple = ( <string> key, )
 print type(hash_val)
@@ -55,3 +55,16 @@ signature_to_verify = (decrypted_signature, )
 public_key = key.publickey()
 print type(public_key)
 print "Verfification result: ", public_key.verify(hash_val, signature_to_verify)
+
+
+def generate_RSA(bits=2048):
+    '''
+    Generate an RSA keypair with an exponent of 65537 in PEM format
+    param: bits The key length in bits
+    Return private key and public key
+    '''
+    from Crypto.PublicKey import RSA 
+    new_key = RSA.generate(bits, e=65537) 
+    public_key = new_key.publickey().exportKey("PEM") 
+    private_key = new_key.exportKey("PEM") 
+    return private_key, public_key
