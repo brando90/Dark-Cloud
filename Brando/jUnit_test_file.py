@@ -1,48 +1,57 @@
 import DarkCloudCryptoLib as dcCryptoLib
-import os, random, struct, sys
-import filecmp
-from Crypto.Cipher import AES
-from Crypto.PublicKey import RSA
-from Crypto import Random
-import pbkdf2
-import hashlib
+
+##test Equal RSA keys
+rsaKey1 = dcCryptoLib.makeRSAKeyObj("password", "username")
+rsaKey2 = dcCryptoLib.makeRSAKeyObj("password", "username")
+print "equal RSA keys: ", dcCryptoLib.equalRSAKeys(rsaKey1, rsaKey2)
 
 ##test lock and unlock functions work
 tableKey = dcCryptoLib.DCTableKey('password', 'username', 'keyFilename')
-plainText = "brando"
-secureData = tableKey.lock(plainText)
-decryptedData = tableKey.unlock(secureData)
+plaintext = "brando"
 
-print decryptedData == plainText
-secureData = tableKey.lock(plainText)
+secureData = tableKey.lock(plaintext)
 decryptedData = tableKey.unlock(secureData)
-print decryptedData == plainText
-secureData = tableKey.lock(plainText)
+print "test1: ", decryptedData == plaintext
+secureData = tableKey.lock(plaintext)
 decryptedData = tableKey.unlock(secureData)
-print decryptedData == plainText
+print "test2: ", decryptedData == plaintext
+secureData = tableKey.lock(plaintext)
+decryptedData = tableKey.unlock(secureData)
+print "test3: ", decryptedData == plaintext
+
+dcSignature = tableKey.dcSign(plaintext)
+unSigned = tableKey.dcVerify(dcSignature)
+print "test4: ", unSigned == plaintext
+
+ciphertext = tableKey.dcEncript(plaintext)
+decryptedData = tableKey.dcDecrypt(ciphertext)
+print "test5: ", decryptedData == plaintext
+
+secureData = tableKey.lock(plaintext)
+sameTableKey = dcCryptoLib.DCTableKey('password', 'username', 'keyFilename')
+decryptedData = sameTableKey.unlock(secureData)
+print "test6: ", decryptedData == plaintext 
+
+##test equality for keys
+tableKey1 = dcCryptoLib.DCTableKey('password', 'username', 'keyFilename')
+tableKey2 = dcCryptoLib.DCTableKey('password', 'username', 'keyFilename')
+tableKey3 = dcCryptoLib.DCTableKey('password1', 'username', 'keyFilename')
+
+print "table keys equal: ", tableKey1 == tableKey2
+print "table testing not equality function: ", tableKey1 != tableKey3
 
 ##test DCCryptoClient
-#test keyFile
+##test keyFile
 dcCryptoClient = dcCryptoLib.DCCryptoClient()
 keyFileObj = dcCryptoClient.createKeyFileObj()
 
-secureData = dcCryptoClient.encryptFile(plainText, keyFileObj)
+secureData = dcCryptoClient.encryptFile(plaintext, keyFileObj)
 decryptedData = dcCryptoClient.decryptFile(secureData, keyFileObj)
 
-print decryptedData == plainText
+print decryptedData == plaintext
 
-#secureKeyFile = keyFileObj.toSecureString()
+secureKeyFile = keyFileObj.toSecureString()
 
-random_generator = Random.new().read
-new_key = RSA.generate(1024, random_generator) #rsaObj 
-public_key = new_key.publickey().exportKey("DER") 
-private_key = new_key.exportKey("DER") 
-
-pub_new_key = RSA.importKey(public_key)
-pri_new_key = RSA.importKey(private_key)
-pub_new_key = pub_new_key.exportKey("DER")
-pri_new_key = pri_new_key.exportKey("DER")
-print private_key == pri_new_key , public_key == pub_new_key
 
 
 

@@ -3,6 +3,7 @@ import filecmp
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto import Random
+from Crypto.Protocol.KDF import PBKDF2
 import pbkdf2
 import hashlib
 
@@ -13,19 +14,12 @@ class DCKey:
     def unlock(self, secureData):
         dcSignature = self.dcDecrypt(secureData)
         plaintext = self.dcVerify(dcSignature)
-        return plainText
+        return plaintext
 
-    def lock(self, plainText):
-        dcSignature = self.dcSign(plainText)
+    def lock(self, plaintext):
+        dcSignature = self.dcSign(plaintext)
         secureData = self.dcEncript(dcSignature)
         return secureData
-
-    def dcSign(self, plaintext):
-        hashVal = hashlib.sha256(plainText).digest()
-        (rsaSignature, ) = self.rsaKeyObj.sign(hashVal, '')
-        rsaSignature = str(rsaSignature)
-        dcSignature = str(len(plainText))+ ","+ plainText + rsaSignature
-        return dcSignature
 
     def dcEncript(self, dcSignature):
         remainder = len(dcSignature) % 16
@@ -47,13 +41,27 @@ class DCKey:
                 break
         return dcSignature[i+1:]
 
+    def dcSign(self, plaintext):
+        hashVal = hashlib.sha256(plaintext).digest()
+        (rsaSignature, ) = self.rsaKeyObj.sign(hashVal, '')
+        rsaSignature = str(rsaSignature)
+        dcSignature = str(len(plaintext))+ ","+ plaintext + rsaSignature
+        return dcSignature
+
     def dcVerify(self, dcSignature):
         l = ""
-        for i in range(0,len(dcSignature)):
+        i = 0
+        # for i in range(0, len(dcSignature)):
+        #     c = dcSignature[i]
+        #     if c == ",":
+        #         break
+        #     l += c
+        while i < len(dcSignature):
             c = dcSignature[i]
             if c == ",":
                 break
             l += c
+            i += 1
         index_signature = i + 1 + int(l)
         plaintext = dcSignature[i+1:index_signature]
         rsaSignature = dcSignature[index_signature:]
@@ -70,17 +78,20 @@ class DCTableKey(DCKey):
         #when making keys from password for a specific keyFilename
         salt = hashlib.sha256(username).digest()
         self.keyAES = makeKeyAES(password, salt)
-        saltIv = str(hashlib.sha256(str(pathToKeyFilename)))
+        saltIv = hashlib.sha256(str(pathToKeyFilename)).digest()
         self.iv = makeIV(self.keyAES, saltIv)
-        self.rsaKeyObj = makeRSAKeyObj(password)
+        self.rsaKeyObj = makeRSAKeyObj(password, salt)
 
     def __eq__(self, otherKey):
         if not isinstance(otherKey, DCTableKey):
             return False
-        boolean = (other.keyAES == self.keyAES)
+        boolean = (otherKey.keyAES == self.keyAES)
         boolean = boolean and (self.iv == otherKey.iv)
         boolean = boolean and equalRSAKeys(self.rsaKeyObj, otherKey.rsaKeyObj)
         return boolean
+
+    def __ne__(self, otherKey):
+        return not self.__eq__(otherKey)
 
 
 class DCFileKey(DCKey):
@@ -88,7 +99,8 @@ class DCFileKey(DCKey):
         self.keyAES = keyAES
         self.iv = iv
         self.rsaRandNum = rsaRandNum
-        self.rsaKeyObj = makeRSAKeyObj(rsaRandNum)
+        salt = hashlib.sha256(iv).digest()
+        self.rsaKeyObj = makeRSAKeyObj(rsaRandNum, salt)
 
     def toSecureString(self, username, password, pathToKeyFilename):
         #generate keys
@@ -132,6 +144,7 @@ class DCCryptoClient:
         iv = str(makeIV(os.urandom(32))) #size = 16
         keyAES = str(makeKeyAES(os.urandom(32))) #size = 32
         rsaRandNum = str(os.urandom(32)) # size = 32
+        salt = os.urandom(32)
         keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
         return keyFileObj
 
@@ -163,39 +176,46 @@ class DCCryptoClient:
         return keyFileObj
 
 
-def encryptAES(keyAES, iv, plainText, mode = AES.MODE_CBC):
+def encryptAES(keyAES, iv, plaintext, mode = AES.MODE_CBC):
     encryptor = AES.new(keyAES, mode, iv)
-    ciphertext = encryptor.encrypt(plainText)
+    ciphertext = encryptor.encrypt(plaintext)
     return ciphertext
 
 def makeKeyAES(password, salt = os.urandom(32)):
-        keyAES = pbkdf2.PBKDF2(str(password), str(salt)).read(32)
-        return keyAES
+    keyAES = pbkdf2.PBKDF2(str(password), str(salt)).read(32)
+    return keyAES
 
 def makeIV(key, salt = os.urandom(32)):
     iv = pbkdf2.PBKDF2(str(key), salt).read(16)
     return iv
 
-def makeRSAKeyObj(password):
-    random_generator = Random.new().read
-    key = RSA.generate(1024, random_generator)
-    exportedKey = key.exportKey('DER', os.urandom(32), pkcs=1)
-    key = RSA.importKey(exportedKey)
-    return key
-
-def equalRSAKeys(self, rsaKey1, rsaKey2):
+def equalRSAKeys(rsaKey1, rsaKey2):
     public_key = rsaKey1.publickey().exportKey("DER") 
     private_key = rsaKey1.exportKey("DER") 
     pub_new_key = rsaKey2.publickey().exportKey("DER")
     pri_new_key = rsaKey2.exportKey("DER")
-    return (private_key == pri_new_key) and (public_key == pub_new_key)
+    boolprivate = (private_key == pri_new_key)
+    #print "boolpri", boolprivate
+    boolpublic = (public_key == pub_new_key)
+    #print "boolpub", boolpublic
+    return (boolprivate and boolpublic)
 
+def makeRSAKeyObj(password, salt):
+    master_key = PBKDF2(password, salt, count=10000)  # bigger count = better
+    def my_rand(n):
+        # PBKDF2 with count=1 and a variable salt makes a handy key-expander
+        my_rand.counter += 1
+        #return PBKDF2(master_key, salt, dkLen=n, count=1)
+        return PBKDF2(master_key, "my_rand:%d" % my_rand.counter, dkLen=n, count=1)
+    my_rand.counter = 0
+    RSA_key = RSA.generate(2048, randfunc=my_rand)
+    return RSA_key
 
 #keyFileData = DCCryptoClient().makeKeyFile("orochimaru" , "kitty")
 #print keyFileData
-tableKey = DCTableKey('password', 'username', 'keyFilename')
-plainText = "brando"
-secureData = tableKey.lock(plainText)
-decryptedData = tableKey.unlock(secureData)
+# tableKey = DCTableKey('password', 'username', 'keyFilename')
+# plaintext = "brando"
+# secureData = tableKey.lock(plaintext)
+# decryptedData = tableKey.unlock(secureData)
 
 
