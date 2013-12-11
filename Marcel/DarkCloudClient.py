@@ -16,8 +16,8 @@ class DCClient:
         self.wd = DCWorkingDirectory(self.username, self.passwd)
         self.HttpClient = DCHTTPClient(127.0.0.1, 8080)
 
-    def tableFilename(self, name):
-        return '.t-' + name
+    def keychainFilename(self, name):
+        return '.kc-' + name
 
     def lsFilename(self, name):
         return '.ls-' + name
@@ -440,14 +440,19 @@ class DCWorkingDirectory:
     def __init__(self, username, password):
         self.username = username
         self.password = password
+        self.currentRoot = username
         self.pwd = []
 
     def root():
-        return '/' + self.username + '/'
+        return '/' + self.currentRoot + '/'
+
+    def switchRoot(otherUser):
+        self.currentRoot = otherUser
+        self.pwd = []
 
     def up(steps=1):
         for i in range(0, steps):
-            if len(self.pwd) != 0:
+            if len(self.pwd) > 0:
                 self.pwd.pop()
             else:
                 break
@@ -455,29 +460,27 @@ class DCWorkingDirectory:
     def down(subdirectory):
         self.pwd.append(subdirectory)
 
+    def path(directories):
+        return self.root() + '/'.join(directories)
+
     def pwd():
-        return self.root() + '/'.join(self.pwd)
+        return self.path(self.pwd)
 
     def encrypted_pwd():
+        encrypted_pwd = []
         for i in range(0,len(self.pwd)):
             dirname = self.pwd[0]
-            path = self.root() + '/'.join(self.pwd[:i])
+            path = self.path(self.pwd[:i])
             # see if we can get the encrypted name without querying the server
             dirKey = dcCryptoClient.getKey(path)
             if not dirKey:
-                # get encrypted keytable filename
-                dirTableKey = DCTableKey(self.username, self.password, ktFilename(dirname))
-                encryptedKTFilename = dcCryptoClient.encryptName(ktFilename(dirname))
-                # query the server for the encrypted keytable file
-                # decrypt the keytable file
-                # store key object in crypto client
-            
-            dcCryptoClient.encryptName(dirname, dirKey)
-            # encrypt dirname with key
+                #TODO: make this error more legit
+               raise ValueError('Manually cd into subdirectories')
 
-
-            # otherwise, query the server for the keyfile
-            # encrypt the name
+            # encrypt dirname with key            
+            encryptedDirname = dcCryptoClient.encryptName(dirname, dirKey)
+            encrypted_pwd.append(encryptedDirname)
+        return self.path(encrypted_pwd)
 
 # -----------------------------------
 
