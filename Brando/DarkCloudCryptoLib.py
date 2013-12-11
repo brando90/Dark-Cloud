@@ -158,7 +158,7 @@ class DCCryptoClient:
     def encryptName(self, name, keyObj):
         return keyObj.dcEncrypt(name) 
 
-    def dencryptName(self, encryptname, keyObj):
+    def decryptName(self, encryptname, keyObj):
         return keyObj.dcDecrypt(encryptname)
 
     def encryptFile(self, fileContent, keyObj):

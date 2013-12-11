@@ -28,11 +28,6 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		BaseHTTPRequestHandler.__init__(self, *args)
 		self.encryptedURL = None
 
-	def setup(self):
-		#TODO: Verify this gets called on a per-request basis
-		BaseHTTPRequestHandler.setup(self)
-		#self.encryptedURL = self.parseURL()
-
 	# Create
 	def do_PUT(self):
 		self.encryptedURL = self.parseURL()
