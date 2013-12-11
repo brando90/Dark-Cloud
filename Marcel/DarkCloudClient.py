@@ -366,7 +366,10 @@ class DCWorkingDirectory:
             # otherwise, query the server for the keyfile
             # encrypt the name
 
-# -----------------------------
+# -----------------------------------
+
+
+# *** Dark Cloud Secure Directory ***
 
 class DCDirObj:
     def __init__(self, directoryContents):
