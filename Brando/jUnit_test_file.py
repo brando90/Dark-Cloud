@@ -8,6 +8,9 @@ print "equal RSA keys: ", dcCryptoLib.equalRSAKeys(rsaKey1, rsaKey2)
 
 ##test lock and unlock functions work
 tableKey = dcCryptoLib.DCTableKey('password', 'username', 'keyFilename')
+tableKeyCopy = dcCryptoLib.DCCryptoClient().createUserMasterKeyObj('password', 'username', 'keyFilename')
+print tableKey == tableKeyCopy
+
 plaintext = "brando"
 
 secureData = tableKey.lock(plaintext)

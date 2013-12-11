@@ -175,6 +175,9 @@ class DCCryptoClient:
         keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
         return keyFileObj
 
+    def createUserMasterKeyObj(self, username, password, pathToKeyFilename):
+        return DCTableKey(username, password, pathToKeyFilename)
+
     def makeKeyFileObjFromSecureKeyData(self, secureKeyFileData, username, password, keyFileName):
         keyObj = DCTableKey(username, password, keyFileName)
         keyFileData = keyObj.unlock(secureKeyFileData)
