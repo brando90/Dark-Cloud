@@ -287,8 +287,6 @@ class DCWorkingDirectory:
             # otherwise, query the server for the keyfile
             # encrypt the name
 
-
-
 # -----------------------------
 
 

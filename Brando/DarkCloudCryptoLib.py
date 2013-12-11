@@ -25,7 +25,7 @@ class DCKey:
         dcSignature = str(len(plainText))+ ","+ plainText + signature
         return dcSignature
 
-    def dcEncript(self, dcSignature):
+    def dcEncrypt(self, dcSignature):
         remainder = len(dcSignature) % 16
         amountPadding = 16 - remainder
         encryptor = AES.new(self.keyAES, AES.MODE_CBC, self.iv)
@@ -112,7 +112,7 @@ class DCCryptoClient:
     def encryptName(self, name, keyObj):
         return keyObj.dcEncrypt(name) 
 
-    def dencryptName(self, encryptname, keyObj):
+    def decryptName(self, encryptname, keyObj):
         return keyObj.dcDecrypt(encryptname)
 
     def encryptFile(self, fileContent, keyObj):
