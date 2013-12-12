@@ -8,6 +8,9 @@ import os
 def keychainFn(self, name, username):
     return '.kc-' + username + '-' + name
 
+def lsFn(dirname):
+    return '.ls-' + dirname
+
 def createAccount(username, passwd):
     HttpClient = DCHTTPClient('127.0.0.1', 8080)
     dn = username
@@ -16,7 +19,7 @@ def createAccount(username, passwd):
 
     userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, kcFn)
 
-    dirKeychain = DCCryptoClient.createKeyFileObj(self.username, self.passwd, kcFn)
+    dirKeychain = DCCryptoClient.createKeyFileObj()
     encryptedDirKeychainFn = DCCryptoClient.encryptName(kcFn, userKeychain) #is this the right key
     encryptedDn = DCCryptoClient.encryptName(dn, dirKeychain)
     encrypted_lsFn = DCCryptoClient.encryptName(lsFn, dirKeychain)
@@ -55,7 +58,7 @@ class DCClient:
         path = self.wd.pwd()
         userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
-        fileKeychain = DCCryptoClient.createKeyFileObj(self.username, self.passwd, kcFn)
+        fileKeychain = DCCryptoClient.createKeyFileObj()
         encryptedFileKeychainFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain) #is this the right key
         encryptedFn = DCCryptoClient.encryptName(path + '/' + fn, fileKeychain)
 
@@ -87,8 +90,8 @@ class DCClient:
 
         #request to create key file on server        
         encryptedPath = self.wd.encrypted_pwd() 
-        secureKeyContent = keyObj.toSecureString(self.username, self.passwd, encryptedPath + '/' + encryptedKeyName)
-        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedKeyName,
+        secureKeyContent = fileKeychain.toSecureString(self.username, self.passwd, encryptedPath + '/' + encryptedFileKeychainFn)
+        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedFileKeychainFn,
                                         True,
                                         False,
                                         secureKeyContent)
@@ -96,28 +99,26 @@ class DCClient:
         #request to create regular file on server
 
         #need to encrypt empty string?
-        secureFileContent = DCCryptoClient.encryptFile(content, keyObj)
-        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedName,
+        secureFileContent = DCCryptoClient.encryptFile(content, fileKeychain)
+        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedFn,
                                         True,
                                         False,
                                         secureFileContent)
 
-        #modify directory signature and send to server
-
         return "Created file: ", name
 
-    def mkdir(self, args):
-        dn = args[0]
+    def mkdir(self, name):
+        dn = name
         kcFn = keychainFn(dn, self.username)
-        lsFn = lsFn(name)
+        lsFn = lsFn(dn)
         path = self.wd.toString()
 
         userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
-        dirKeychain = DCCryptoClient.createKeyFileObj(self.username, self.passwd, kcFn)
+        dirKeychain = DCCryptoClient.createKeyFileObj()
         encryptedDirKeychainFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain) #is this the right key
         encryptedDn = DCCryptoClient.encryptName(path + '/' + dn, dirKeychain)
-        encrypted_lsFn = DCCryptoClient.encryptName(lsFn, dirKeychain)
+        encrypted_lsFn = DCCryptoClient.encryptName(path + '/' + lsFn, dirKeychain) # is the path needed??
 
         parentDn = self.wd.up(1)
         parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.password, parentDn, self.wd.encrypted_pwd(), self.HttpClient)
@@ -145,28 +146,25 @@ class DCClient:
         #request to create key file and directory on server
         
         encryptedPath = self.wd.encrypted_pwd()
-        secureKeyContent = keyObj.toSecureString(self.username, self.passwd, encryptedPath + '/' + encryptedKeyName)
+        secureKeyContent = dirKeychain.toSecureString(self.username, self.passwd, encryptedPath + '/' + encryptedDirKeychainFn)
 
         #keyfile
-        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedKeyName,
+        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedDirKeychainFn,
                                         True,
                                         False,
                                         secureKeyContent)
 
         #lsfile
-        secureFileContent = DCCryptoClient.encryptFile("", keyObj)
-        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedDirectorySignature,
+        secureFileContent = DCCryptoClient.encryptFile("", dirKeychain)
+        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encrypted_lsFn,
                                         True,
                                         False,
                                         secureFileContent)
 
         #directory
-        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedName,
+        self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedDn,
                                         False,
                                         True)
-
-        #modify parent directory signature and send to server
-
 
         return "Created directory: ", name
 
