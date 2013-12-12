@@ -188,7 +188,7 @@ class DCClientParser:
             print "Invalid file name."
             return
 
-        self.dcClient = DCClient(self.username, self.passwd)
+        self.dcClient = DarkCloudClient.DCClient(self.username, self.passwd)
         self.loggedIn = True
         prompt = "DarkCloud:" + self.username + " >>> "
 

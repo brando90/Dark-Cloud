@@ -35,7 +35,8 @@ def createAccount(username, passwd):
                                     secureKeyContent)
 
     #lsfile
-    secureFileContent = cryptClient.encryptFile("", keyObj)
+
+    secureFileContent = cryptClient.encryptFile("", dirKeychain)
     HttpClient.sendCreateRequest(encrypted_lsFn,
                                     True,
                                     False,
