@@ -38,11 +38,12 @@ class DCHTTPClient():
 		print "create request sent"
 		url = encryptedPath
 		headers = {'content-length':0, 
-		'query-string':urlencode({Method:Create, File:isFile, Dir:isDir}),
-		'url':url}
-		if (encryptedContents):
-			headers['content-length'] = len(encryptedContents)
-		self.connection.request(PUT, '', encryptedContents, headers)
+			'query':urlencode({Method:Create, File:isFile, Dir:isDir}),
+			'url':url}
+		# if encryptedContents != None:
+		# 	headers['content-length'] = len(encryptedContents)
+		print "headers: " + repr(headers)
+		self.connection.request(PUT, '/', encryptedContents, headers)
 		return self.connection.getresponse().read()
 
 	# Read --> GET
@@ -50,7 +51,7 @@ class DCHTTPClient():
 		print "read request sent"
 		url = encryptedPath
 		headers = {'query-string':urlencode({Method:Read}), 'url':url}
-		self.connection.request(GET, '', None, headers)
+		self.connection.request(GET, '/', None, headers)
 		response = self.connection.getresponse().read()
 		if response[:5] == 'file:':
 			return response[5:]
@@ -64,9 +65,9 @@ class DCHTTPClient():
 	def sendWriteRequest(self, encryptedPath, newEncryptedContents):
 		print "write request sent"
 		url = encryptedPath
-		headers = {'content-length':len(newEncryptedContents), 'query-string':urlencode({Method:Write}),
-		'url':url}
-		self.connection.request(POST, '', newEncryptedContents, headers)
+		headers = {'query-string':urlencode({Method:Write}),
+		'url':url} # 'content-length':len(newEncryptedContents), 
+		self.connection.request(POST, '/', newEncryptedContents, headers)
 		return self.connection.getresponse().read()
 
 	# Rename --> POST
@@ -74,7 +75,7 @@ class DCHTTPClient():
 		print "rename request sent"
 		url = encryptedPath
 		headers = {'query-string':urlencode({Method:Rename}), 'url':url}
-		self.connection.request(POST, '', newEncryptedPath, headers)
+		self.connection.request(POST, '/', newEncryptedPath, headers)
 		return self.connection.getresponse().read()
 
 	# Delete --> DELETE
@@ -82,7 +83,7 @@ class DCHTTPClient():
 		print "delete request sent"
 		url = encryptedPath
 		headers = {'query-string':urlencode({Method:Delete}), 'url':url}
-		self.connection.request(DELETE, '', None, headers)
+		self.connection.request(DELETE, '/', None, headers)
 		return self.connection.getresponse().read()
 
 # ----------------------------------

@@ -126,8 +126,12 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	# 	return self.path
 
 	def getQueryArg(self, key):
-		print key + " : " + repr(parse_qs(self.getQueryString()).get(key)[0])
-		return parse_qs(self.getQueryString()).get(key)[0]
+		print "Sevrers-side qs: "+self.getQueryString()
+		#print key + " : " + repr(parse_qs(self.getQueryString()).get(key)[0])
+		parsedQs = parse_qs(self.getQueryString())
+		keyResults = parsedQs.get(key)
+		firstResult = keyResults[0]
+		return firstResult
 
 	def getMethod(self):
 		return self.getQueryArg(Method)
@@ -139,14 +143,22 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		return self.getQueryArg(Dir)
 
 	def getEncryptedBody(self):
-		encryptedContentLength = int(self.headers.getheader('content-length'))
+		encryptedContentLength = int(self.headers.getheader('Content-Length'))
 		return self.rfile.read(encryptedContentLength)
 
 	def getQueryString(self):
-		return self.headers.getheader('query-string')
+		print "server side headers: "+repr(self.headers)
+		qs = self.headers.getheader('query')
+		#print "server side qs firsthand: " + repr(qs)
+		if qs != None:
+			print "qs is something!"
+			return qs
+		else:
+			print "qs is none"
+			return ''
 
 	def getURL(self):
-		url = self.headers.getheader('url')
+		url = urllib.quote(self.headers.getheader('url'))
 		print "Server-side path:\n" + url
 		return url
 

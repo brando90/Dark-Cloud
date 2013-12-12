@@ -24,6 +24,7 @@ class DCKey:
 
     def unlock(self, secureData):
         dcSignature = self.dcDecrypt(secureData)
+        print "dcSignature: "+ dcSignature
         plaintext = self.dcVerify(dcSignature)
         return plaintext
 
@@ -75,7 +76,9 @@ class DCKey:
             i += 1
         index_signature = i + 1 + int(l)
         plaintext = dcSignature[i+1:index_signature]
+        print "plaintext:" + plaintext
         rsaSignature = dcSignature[index_signature:]
+        print "rsasignature:"+rsaSignature
         signature_to_verify = (long(rsaSignature), ) #tuple for rsa pycrypto should have (rsa_signature, )
         hash_val = hashlib.sha256(plaintext).digest()
         public_key = self.rsaKeyObj.publickey()
@@ -153,7 +156,7 @@ class DCCryptoClient:
         self.pathsToKeys[pathname] = keyObj
 
     def getKey(self, pathname):
-        return self.htKeys.get(pathname)
+        return self.pathsToKeys.get(pathname)
 
     def encryptName(self, name, keyObj):
         return keyObj.dcEncrypt(name) 

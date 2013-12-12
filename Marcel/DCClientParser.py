@@ -38,11 +38,11 @@ class DCClientParser:
             'help': self.show_help,
             'cd': self.cd,
             'vim': self.vim,
-            'newAccount': self.newAccount,
+            'register': self.register,
             'readFiles': self.showReadFiles #maybe
         }
         
-    def newAccount(self, args):
+    def register(self, args):
         un = raw_input('Username: ')
         pd = getpass.getpass()
 
@@ -54,7 +54,7 @@ class DCClientParser:
 
         #sanitize input?
 
-        self.dcClient = DarkCloudClient.createAccount(self.username, self.passwd)
+        self.dcClient = DarkCloudClient.register(self.username, self.passwd)
 
     def create(self, args):
         if len(args) == 2:

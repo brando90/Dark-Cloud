@@ -14,7 +14,7 @@ bits = 2048
 #Abstract class for a DCKey
 class DCKey:
     def __init__(self):
-        return
+        pass
 
     #prints the string for debugging purposes
     def __str__(self):
@@ -190,14 +190,36 @@ class DCCryptoClient:
         self.pathsToKeys[pathname] = keyObj
 
     def getKey(self, pathname):
-        return self.htKeys.get(pathname)
+        return self.pathsToKeys.get(pathname)
 
     def encryptName(self, name, keyObj):
-        print "eN with name: " + name
-        print "eN with key: " + str(keyObj)
-        return keyObj.dcEncrypt(name) 
+        encryptedName = keyObj.dcEncrypt(name) 
+        encryptedNameUnixAccetpableFormat = self.makeStringToAcceptableUnixFormat(urllib.quote(encryptedName))
+        return encryptedNameUnixAccetpableFormat
+
+    def makeStringToAcceptableUnixFormat(self, encryptedName):
+        array = []
+        length = len(encryptedName)
+        newName = encryptname
+        for i in range(0,length):
+            c = encryptname[i]
+            if(c == "\0"):
+                newName = newName[:i]+"N"+newName[i+1:]
+                array.append(i)
+            elif c == "/":
+                newName = newName[:i]+"F"+newName[i+1:]
+                array.append(i)
+        numberOfSubs = len(array)
+        for i in range(0,numberOfSubs):
+            index = array[i]
+            newName = str(index)+','+newName
+        newName = str(numberOfSubs)+','+newName
+        #newName = encryptedName
+        return newName
 
     def decryptName(self, encryptname, keyObj):
+        #a\n\nta
+        #attta
         return keyObj.dcDecrypt(encryptname)
 
     def encryptFile(self, fileContent, keyObj):
