@@ -14,7 +14,7 @@ bits = 2048
 #Abstract class for a DCKey
 class DCKey:
     def __init__(self):
-        pass
+        return
 
     #prints the string for debugging purposes
     def __str__(self):
