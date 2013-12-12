@@ -18,11 +18,11 @@ secureData = tableKey.lock(plaintext)
 decryptedData = tableKey.unlock(secureData)
 print "test1: ", decryptedData == plaintext
 secureData = tableKey.lock(plaintext)
-decryptedData = tableKey.unlock(secureData)
-print "test2: ", decryptedData == plaintext
+decryptedData2 = tableKey.unlock(secureData)
+print "test2: ", decryptedData2 == plaintext
 secureData = tableKey.lock(plaintext)
-decryptedData = tableKey.unlock(secureData)
-print "test3: ", decryptedData == plaintext
+decryptedData3 = tableKey.unlock(secureData)
+print "test3: ", decryptedData3 == plaintext
 
 dcSignature = tableKey.dcSign(plaintext)
 unSigned = tableKey.dcVerify(dcSignature)
@@ -117,8 +117,23 @@ print "public keys equal: ", (key1 != pubKeyCopy) and (key2 != pubKeyCopy)
 print "verify test: ", key1.publickey().verify(p, si)
 print "verify test: ", pubKeyCopy.publickey().verify(p, si)
 
+####======Sharing tests======
+plaintext = "brando123"
+dcCryptoClient = dcCryptoLib.DCCryptoClient()
+keyFileObj = dcCryptoClient.createKeyFileObj()
+readKey = dcCryptoClient.shareKeyFileAsRead(keyFileObj)
+
+secureData = dcCryptoClient.encryptFile(plaintext, keyFileObj)
+decryptedData = dcCryptoClient.decryptFile(secureData, readKey)
+
+print "reading permission works 1: ", decryptedData == plaintext
 
 
+secureReadKeyStr = readKey.toSecureString( "username", "password", "pathToKeyFilename")
+readKeyFromStr = dcCryptoClient.makeKeyFileObjFromSecureKeyData( secureReadKeyStr, "username", "password", "pathToKeyFilename")
+decryptedData2 = dcCryptoClient.decryptFile(secureData, readKeyFromStr)
+
+print "reading from secure file worked: ", decryptedData2 == plaintext
 
 
 

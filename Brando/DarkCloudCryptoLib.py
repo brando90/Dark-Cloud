@@ -124,22 +124,26 @@ class DCFileKey(DCKey):
     def __init__(self, iv, keyAES, rsaRandNum = None, publickey = None):
         self.keyAES = keyAES
         self.iv = iv
-        self.rsaRandNum = rsaRandNum
         salt = hashlib.sha256(iv).digest()
         #self.rsaKeyObj
         if (rsaRandNum == None):
             #this means errors will be thrown if the user tries to write
-            self.rsaVerifyKeyObj = publickey
-            self.rsaKeyObj =  "" #its more explicit this way
+            self.rsaVerifyKeyObj = RSA.importKey(publickey)
+            self.rsaKeyObj =  ""
+            self.rsaRandNum = ""
         else:
             self.rsaKeyObj = makeRSAKeyObj(rsaRandNum, salt)
             self.rsaVerifyKeyObj = self.rsaKeyObj.publickey()
+            self.rsaRandNum = rsaRandNum
 
     #Generates a string representing the the keys of for locking a file ina secure (encrypted/signed) format.
     def toSecureString(self, username, password, pathToKeyFilename):
         #generate keys
         ivLen = len(self.iv)
         keyAESLen = len(self.keyAES)
+        # if(self.rsaRandNum == None):
+        #     rsaRandNumLen = 0
+        # else:
         rsaRandNumLen = len(self.rsaRandNum)
         rsaVerifyKeyStr = self.rsaVerifyKeyObj.exportKey('PEM')
         rsaVerifyKeyLen = len(self.rsaVerifyKeyObj.exportKey('PEM'))
@@ -167,11 +171,10 @@ class DCFileKey(DCKey):
     def __ne__(self, otherKey):
         return not self.__eq__(otherKey)
 
+    #should only be used inside the crypto library
     def getReadkeys(self):
-        keyAES = self.keyAES
-        iv = self.iv
         verifyKey = self.rsaVerifyKeyObj.exportKey('PEM')
-        return (iv, keyAES, verifyKey)
+        return (self.iv, self.keyAES, verifyKey)
 
 class DCCryptoClient:
     def __init__(self):
@@ -239,7 +242,7 @@ class DCCryptoClient:
 
         if(rsaKeyObjLen == 0):
             #means its a read permission
-            DCFileKey(iv, keyAES, rsaRandNum, rsaRandNum = None, publickey = rsaVerifyKeyStr)
+            keyFileObj = DCFileKey(iv, keyAES, rsaRandNum = None, publickey = rsaVerifyKeyStr)
         else:
             keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
         return keyFileObj
