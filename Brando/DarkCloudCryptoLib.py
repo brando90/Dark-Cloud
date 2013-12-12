@@ -100,8 +100,9 @@ class DCKey:
             raise ValueError("Verification failed")
 
 #Class for holding the keys that locks (encrypt/signs) the key file table.
-#Recall the key file table is the file that actually has the keys for locking (encrpting/signing) 
+#Recall that the key file table is the file that actually has the keys for locking (encrpting/signing) 
 #a user's data content. This class just locks that (key file table).
+#The table key is the one that actually locks this information from the server.
 class DCTableKey(DCKey):
     def __init__(self, username, password, pathToKeyFilename):
         #when making keys from password for a specific keyFilename
