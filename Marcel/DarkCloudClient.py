@@ -205,42 +205,42 @@ class DCClient:
 
         return decryptedFileContent
 
-    def readSecureDirObj(name):
-        kfname = tableFilename(name)
-        lsname = lsFilename(name)
-        path = self.wd.toString()
-        mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
+    # def readSecureDirObj(name):
+    #     kfname = tableFilename(name)
+    #     lsname = lsFilename(name)
+    #     path = self.wd.toString()
+    #     mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
 
-        #get encrypted keyfile name
-        encryptedKeyFileName = DCCryptoClient.encryptName(path + '/' + kfname, mkObj)
+    #     #get encrypted keyfile name
+    #     encryptedKeyFileName = DCCryptoClient.encryptName(path + '/' + kfname, mkObj)
 
-        #TODO:check that keys exist for all parts of the encrypted path
+    #     #TODO:check that keys exist for all parts of the encrypted path
 
-        encryptedPath = self.wd.encrypted_pwd()
+    #     encryptedPath = self.wd.encrypted_pwd()
 
-        #request keyfile
-        secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFileName)
+    #     #request keyfile
+    #     secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFileName)
 
-        #construct key object
-        keyObj = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
+    #     #construct key object
+    #     keyObj = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
 
-        #save keyobj for later
-        DCCryptoClient.addKeyObj(path + '/' + lsname, keyObj)
+    #     #save keyobj for later
+    #     DCCryptoClient.addKeyObj(path + '/' + lsname, keyObj)
 
-        #request encrypted file using encrypted file name
-        encryptedLSFileName = DCCryptoClient.encryptName(path + '/' + lsname, keyObj)
-        encryptedDirName = DCCryptoClient.encryptName(path + '/' + name, keyObj)
+    #     #request encrypted file using encrypted file name
+    #     encryptedLSFileName = DCCryptoClient.encryptName(path + '/' + lsname, keyObj)
+    #     encryptedDirName = DCCryptoClient.encryptName(path + '/' + name, keyObj)
 
-        encryptedLSFileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName)
-        dirContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedDirName)
+    #     encryptedLSFileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName)
+    #     dirContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedDirName)
 
-        #decrypt file contents
-        decryptedLSFileContent = DCCryptoClient.decryptFile(encryptedLSFileContent, keyObj)
+    #     #decrypt file contents
+    #     decryptedLSFileContent = DCCryptoClient.decryptFile(encryptedLSFileContent, keyObj)
 
-        #verify contents
-        dirObj = DCSecureDir(dirContent, decryptedLSFileContent)
+    #     #verify contents
+    #     dirObj = DCSecureDir(dirContent, decryptedLSFileContent)
 
-        return dirObj
+    #     return dirObj
     
     def readDir(name):
         dirObj = self.readSecureDirObj(name)
@@ -688,7 +688,7 @@ class DCDir:
         self.dn = dn
         self.encryptedDirname = DCCryptoClient.encryptName(dn, dirKeychain)
         self.encryptedDirpath = encryptedDirpath
-        self.lsFn = lsFn(dn)
+        self.lsFn = DCDir.lsFn(dn)
         self.encrypted_lsFn = dcCryptoClient.encryptName(self.lsFn, dirKeychain)
         self.dirKeychain = dirKeychain
     
@@ -702,8 +702,8 @@ class DCDir:
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file with new filename and fileKeychain filename (plaintext & encrypted name)
-        lsFile_file = DCDir.add_lsFileEntry(lsFile, plaintextFn, encryptedFn)
-        lsFile_file_keychain = DCDir.add_lsFileEntry(lsFile_file, plaintextFileKeychainFn, encryptedFileKeychainFn)
+        lsFile_file = DCDir.addFile_lsEntry(lsFile, plaintextFn, encryptedFn)
+        lsFile_file_keychain = DCDir.addFile_lsEntry(lsFile_file, plaintextFileKeychainFn, encryptedFileKeychainFn)
         # -Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_file_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
@@ -718,8 +718,8 @@ class DCDir:
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file by removing filename and fileKeychain name (plaintext & encrypted name)
-        lsFile_file = DCDir.remove_lsFileEntry(lsFile, encryptedFn)
-        lsFile_file_keychain = DCDir.remove_lsFileEntry(lsFile_file, encryptedFileKeychainFn)
+        lsFile_file = DCDir.removeFile_lsEntry(lsFile, encryptedFn)
+        lsFile_file_keychain = DCDir.removeFile_lsEntry(lsFile_file, encryptedFileKeychainFn)
         # - Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_file_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
@@ -734,9 +734,9 @@ class DCDir:
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file with new filename and fileKeychain filename (plaintext & encrypted name)
-        lsFile_dir = DCDir.add_lsEntry(lsFile, plaintextDn, encryptedDn)
-        lsFile_dir_ls = DCDir.add_lsEntry(lsFile_dir, plaintext_lsFn, encrypted_lsFn)
-        lsFile_dir_ls_keychain = DCDir.add_lsEntry(lsFile_dir_ls, plaintextDirKeychainFn, encryptedDirKeychainFn)
+        lsFile_dir = DCDir.addDir_lsEntry(lsFile, plaintextDn, encryptedDn)
+        lsFile_dir_ls = DCDir.addFile_lsEntry(lsFile_dir, plaintext_lsFn, encrypted_lsFn)
+        lsFile_dir_ls_keychain = DCDir.addFile_lsEntry(lsFile_dir_ls, plaintextDirKeychainFn, encryptedDirKeychainFn)
         # - Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_dir_ls_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
@@ -751,9 +751,9 @@ class DCDir:
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file by removing dirname, dir_lsFile and dirKeychain filename (plaintext & encrypted name)
-        lsFile_dir = DCDir.remove_lsEntry(lsFile, encryptedDn)
-        lsFile_dir_ls = DCDir.remove_lsEntry(lsFile_dir, encrypted_lsFn)
-        lsFile_dir_ls_keychain = DCDir.remove_lsEntry(lsFile_dir_ls, encryptedDirKeychainFn)
+        lsFile_dir = DCDir.removeDir_lsEntry(lsFile, encryptedDn)
+        lsFile_dir_ls = DCDir.removeFile_lsEntry(lsFile_dir, encrypted_lsFn)
+        lsFile_dir_ls_keychain = DCDir.removeFile_lsEntry(lsFile_dir_ls, encryptedDirKeychainFn)
         # - Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_dir_ls_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
