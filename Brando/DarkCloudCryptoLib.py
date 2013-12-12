@@ -7,6 +7,10 @@ from Crypto.Protocol.KDF import PBKDF2
 import pbkdf2
 import hashlib
 
+##Number of bit for RSA security. 2048 is military security, 1024 is comercial security
+#bits = 1024
+bits = 2048
+
 #Abstract class for a DCKey
 class DCKey:
     def __init__(self):
@@ -278,6 +282,7 @@ def equalRSAKeys(rsaKey1, rsaKey2):
     return (boolprivate and boolpublic)
 
 def makeRSAKeyObj(password, salt):
+    #for performance changes change the bits
     #careful with changing this function.
     #if you don't know how it works, changing it might break the library completely.
     master_key = PBKDF2(password, salt, count=10000)  # bigger count = better
@@ -287,14 +292,5 @@ def makeRSAKeyObj(password, salt):
         #return PBKDF2(master_key, salt, dkLen=n, count=1)
         return PBKDF2(master_key, "my_rand:%d" % my_rand.counter, dkLen=n, count=1)
     my_rand.counter = 0
-    RSA_key = RSA.generate(2048, randfunc=my_rand)
+    RSA_key = RSA.generate(bits, randfunc=my_rand)
     return RSA_key
-
-#keyFileData = DCCryptoClient().makeKeyFile("orochimaru" , "kitty")
-#print keyFileData
-# tableKey = DCTableKey('password', 'username', 'keyFilename')
-# plaintext = "brando"
-# secureData = tableKey.lock(plaintext)
-# decryptedData = tableKey.unlock(secureData)
-
-
