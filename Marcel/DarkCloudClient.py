@@ -172,7 +172,7 @@ class DCClient:
 
     def read(encryptedName):
         encryptedPath = self.wd.encrypted_pwd()
-        content = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
+        content = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFileName)
         return content
 
     def readFile(name):
@@ -219,7 +219,7 @@ class DCClient:
         encryptedPath = self.wd.encrypted_pwd()
 
         #request keyfile
-        secureKeyfileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
+        secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFileName)
 
         #construct key object
         keyObj = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
@@ -231,8 +231,8 @@ class DCClient:
         encryptedLSFileName = DCCryptoClient.encryptName(path + '/' + lsname, keyObj)
         encryptedDirName = DCCryptoClient.encryptName(path + '/' + name, keyObj)
 
-        encryptedLSFileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedLSFileName)
-        dirContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedDirName)
+        encryptedLSFileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName)
+        dirContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedDirName)
 
         #decrypt file contents
         decryptedLSFileContent = DCCryptoClient.decryptFile(encryptedLSFileContent, keyObj)
@@ -262,7 +262,7 @@ class DCClient:
             #request keyfile
             encryptedKeyFileName = DCCryptoClient.encryptName(path + '/' + kfname, mkObj)
             encryptedPath = self.wd.encrypted_pwd()
-            secureKeyfileContent = self.HttpClient.sendReadCommand(encryptedPath + '/' + encryptedKeyFileName)
+            secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFileName)
             keyObj = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, path + '/' + kfname)
 
         #encrypt file's new contents
@@ -560,6 +560,7 @@ class DCDir:
             if entry.isFile and (entry.encryptedName == encryptedFn):
                 #remove entry
                 updated_lsFile = lsFile[:offset] + lsFile[newOffset:]
+            offset = newOffset
         return updated_lsFile
 
         
@@ -585,6 +586,7 @@ class DCDir:
             if entry.isDir and (entry.encryptedName == encryptedFn):
                 #remove entry
                 updated_lsFile = lsFile[:offset] + lsFile[newOffset:]
+            offset = newOffset
         return updated_lsFile
 
     @staticmethod
@@ -647,11 +649,35 @@ class DCDir:
         while offset < len(lsFile):
             entry, newOffset = DCDir.readEntry(lsFile, offset)
             entries.append(entry)
-        # Sort by plaintext names
-        sorted_entries = sorted(entries, key=lambda entry: entry.plaintextName)
+            offset = newOffset
+        # Sort by encrypted entry names
+        sorted_entries = sorted(entries, key=lambda entry: entry.encrytedName)
         # Sorted lsFile construction
         return ''.join([str(sorted_entry) for sorted_entry in sorted_entries])
 
+    @staticmethod
+    def verifyWith_lsFile(encryptedDirEntries, lsFile):
+        # If successful, returns a list of plaintext names of directory entries
+        #TODO: format read dir string obtained from server 
+        #   -> parse string into array of encrypted entry names
+        #   -> sort array (referred to below as sortedEncryptedDirEntries)
+        # sort encrypted dir contents
+        offset = 0
+        entryCounter = 0
+        plaintextEntryNames = []
+        while offset < len(lsFile):
+            encryptedNameFromDir = sortedEncryptedDirEntries[entryCounter]
+            lsFileEntry, newOffset = DCDir.readEntry(lsFile, offset)
+            if (encryptedNameFromDir != lsFileEntry.encryptedName):
+                # Mismatch in sorted entries
+                raise ValueError("DCDir verification failed!")
+            plaintextEntryNames.append(lsFileEntry.plaintextName)
+            offset = newOffset
+            entryCounter += 1
+        # Different number of entries
+        if (entryCounter != len(sortedEncryptedDirEntries)):
+            raise ValueError("DCDir verification failed!")
+        return plaintextEntryNames
 
     # ------------------------
 

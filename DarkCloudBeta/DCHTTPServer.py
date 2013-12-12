@@ -4,6 +4,7 @@ from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import os
 import sys
 import urllib
+import json
 from urlparse import urlparse, parse_qs
 
 # *** Methods ***
@@ -169,7 +170,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		self.send_header('Content-type', 'text')
 		self.end_headers()
 
-		self.wfile.write(fd.read())
+		self.wfile.write('file:'+fd.read())
 		fd.close()
 		return
 
@@ -180,7 +181,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		self.send_header('Content-type', 'text')
 		self.end_headers()
 
-		self.wfile.write(repr(ls))
+		self.wfile.write('dir:'+json.dumps(ls))
 		return
 
 	def writeFile(self, encryptedPath, newEncryptedContents):

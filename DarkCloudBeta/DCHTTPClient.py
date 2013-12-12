@@ -2,6 +2,7 @@
 
 import httplib
 import sys
+import json
 from urllib import urlencode
 
 # *** HTTP methods ***
@@ -42,7 +43,14 @@ class DCHTTPClient():
 	def sendReadRequest(self, encryptedPath):
 		url = encryptedPath + '?' + urlencode({Method:Read})
 		self.connection.request(GET, url)
-		return self.connection.getresponse().read()
+		response = self.connection.getresponse().read()
+		if response[:5] == 'file:':
+			return response[5:]
+		elif response[:4] == 'dir:':
+			return json.loads(response[4:])
+		else:
+			raise ValueError('Server responded with a non-file, non-directory')
+		
 
 	# Write --> POST
 	def sendWriteRequest(self, encryptedPath, newEncryptedContents):
