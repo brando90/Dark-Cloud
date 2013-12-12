@@ -20,10 +20,6 @@ class DCClient:
         #TODO: should be dependent on username
         return '.kc-' + name
 
-    def lsFilename(self, name):
-        #TODO: should be dependent on username
-        return '.ls-' + name
-
     def createFile(self, args):
         name = args[0]
         kfname = tableFilename(name)
@@ -456,11 +452,12 @@ class DCWorkingDirectory:
         switchRoot(username)
 
     def up(steps=1):
-        for i in range(0, steps):
+        newWD = None
+        for i in xrange(0, steps):
             if len(self.pwd) > 0:
-                self.pwd.pop()
+                newWD = self.pwd.pop()
             else:
-                break
+                return newWD
 
     def down(subdirectory):
         self.pwd.append(subdirectory)
@@ -493,64 +490,108 @@ class DCWorkingDirectory:
 # *** Dark Cloud Secure Directory ***
 
 class DCDir:
-    # For adding/removing entries in ls reference file
-    def __init__(self, directoryContents, lsContents): # how should this be initialized
-        self.contents = directoryContents
+
+    # *** Class attrs & methods ***
+
+    @staticmethod
+    def lsFilename(dirname):
+        #TODO: make this more legit
+        return '.ls-' + dirname
+
+    @staticmethod
+    def add_lsEntry(lsFile, plaintextFilename, encryptedFilename):
+        pass
+
+    @staticmethod
+    def remove_lsEntry(lsFile, plaintextFilename, encryptedFilename):
+        pass
+
+    # @staticmethod
+    # def add_lsDirEntry(lsFile, plaintextDirname, encryptedDirpath):
+    #     pass
+
+    # @staticmethod
+    # def remove_lsDirEntry(lsFile, plaintextDirname, encryptedDirpath):
+    #     pass
+
+    # ------------------------
+
+
+    # *** Instance methods ***
+
+    def __init__(self, dirname, pwd, encrypted_pwd, dirKeychain): # how should this be initialized
+        self.dirname = dirname
+        self.encryptedDirname = DCCryptoClient.encryptName(self.dirname, dirKeychain)
+        #TODO: path to dir.. necessary?
+        self.dirpath = dirpath
+        self.encryptedDirpath = encryptedDirpath
+        self.lsFilename = lsFilename(dirname)
+        self.encrypted_lsFilename = dcCryptoClient.encryptName(self.lsFilename, dirKeychain)
+        self.dirKeychain = dirKeychain
+    
+    def fullEncryptedPath(name):
+        return self.encryptedDirpath + '/' + name
 
     def verifiedRead():
         pass
 
-    def registerFile(plaintextFilename, encryptedFilename):
-        # - generate parent dir table key (using plaintext dir path)
-        # - encrypted parent dir keyfile name = E_{tableKey}[/pwd/ + ".tf-" +plaintext parent dirname]
-        # - query server for parent dir keyfile (using encrypted parent dir keyfile name)
-        # - decrypt/verify parent dir keyfile (using parent dir tableKey)
-        # - encrypted parent dir ls filename = E_{keyfile}[".ls-" +plaintext parent dirname]
-        # - query server for secure parent dir ls file
-        # - decrypt/verify parent dir ls file
-        # - update parent dir ls file with new file and keyfile names (plaintext & encrypted name)
-        # - secure updated parent dir ls file
-        # - query server to overwrite parent dir secure ls file
-        pass
+    # Add file to directory ls file
+    def registerFile(plaintextFilename, encryptedFilename, plaintextFileKeychainName, encryptedFileKeychainName, httpClient):
+        # - Query server for secure ls file
+        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFilename))
+        # - Unlock (decrypt/verify) ls file
+        lsFile = self.dirKeychain.unlock(secure_lsFile)
+        # - Update ls file with new filename and fileKeychain filename (plaintext & encrypted name)
+        lsFile_file = DCDir.add_lsFileEntry(lsFile, plaintextFilename, encryptedFilename)
+        lsFile_file_keychain = DCDir.add_lsFileEntry(lsFile_file, plaintextFileKeychainName, encryptedFileKeychainName)
+        # - Secure (sign/encrypt) updated ls file
+        updatedSecure_lsFile = self.dirKeychain.lock(lsFile_file_keychain)
+        # - Query server to overwrite secure ls file
+        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFilename), updatedSecure_lsFile)
 
-    def unregisterFile(plaintextFilename):
-        # - generate parent dir table key (using plaintext dir path)
-        # - encrypted parent dir keyfile name = E_{tableKey}[/pwd/ + ".tf-" +plaintext parent dirname]
-        # - query server for parent dir keyfile (using encrypted parent dir keyfile name)
-        # - decrypt/verify parent dir keyfile (using parent dir tableKey)
-        # - encrypted parent dir ls filename = E_{keyfile}[".ls-" +plaintext parent dirname]
-        # - query server for secure parent dir ls file
-        # - decrypt/verify parent dir ls file
-        # - update parent dir ls file by deleting file and keyfile names (plaintext & encrypted name)
-        # - secure updated parent dir ls file
-        # - query server to overwrite parent dir ls file
-        pass
+    # Remove file from directory ls file
+    def unregisterFile(plaintextFilename, encryptedFilename, plaintextFileKeychainName, encryptedFileKeychainName, httpClient):
+        # - Query server for secure ls file
+        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFilename))
+        # - Unlock (decrypt/verify) ls file
+        lsFile = self.dirKeychain.unlock(secure_lsFile)
+        # - Update ls file by deleting filename and fileKeychain name (plaintext & encrypted name)
+        lsFile_file = DCDir.remove_lsFileEntry(lsFile, plaintextFilename, encryptedFilename)
+        lsFile_file_keychain = DCDir.remove_lsFileEntry(lsFile_file, plaintextFileKeychainName, encryptedFileKeychainName)
+        # - Secure (sign/encrypt) updated ls file
+        updatedSecure_lsFile = self.dirKeychain.lock(lsFile_file_keychain)
+        # - Query server to overwrite secure ls file
+        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFilename), updatedSecure_lsFile)
 
-    def registerDir(plaintextDirname, encryptedDirname):
-        # - generate parent dir table key (using plaintext dir path)
-        # - encrypted parent dir keyfile name = E_{tableKey}[/pwd/ + ".tf-" +plaintext parent dirname]
-        # - query server for parent dir keyfile (using encrypted parent dir keyfile name)
-        # - decrypt/verify parent dir keyfile (using parent dir tableKey)
-        # - encrypted parent dir ls filename = E_{keyfile}[".ls-" +plaintext parent dirname]
-        # - query server for secure parent dir ls file
-        # - decrypt/verify parent dir ls file
-        # - update parent dir ls file with new dir, keyfile, and ls file names (plaintext & encrypted name)
-        # - secure updated parent dir ls file
-        # - query server to overwrite parent dir secure ls file
-        pass
+    # Add dir to directory ls file
+    def registerDir(plaintextFilename, encryptedFilename, plaintext_lsFilename, encrypted_lsFilename, plaintextFileKeychainName, encryptedFileKeychainName, httpClient):
+        # - Query server for secure ls file
+        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFilename))
+        # - Unlock (decrypt/verify) ls file
+        lsFile = self.dirKeychain.unlock(secure_lsFile)
+        # - Update ls file with new filename and fileKeychain filename (plaintext & encrypted name)
+        lsFile_dir = DCDir.add_lsEntry(lsFile, plaintextDirname, encryptedDirname)
+        lsFile_dir_ls = DCDir.add_lsEntry(lsFile_dir, plaintext_lsFilename, encrypted_lsFilename)
+        lsFile_dir_ls_keychain = DCDir.add_lsEntry(lsFile_dir_ls, plaintextFileKeychainName, encryptedFileKeychainName)
+        # - Secure (sign/encrypt) updated ls file
+        updatedSecure_lsFile = self.dirKeychain.lock(lsFile_dir_ls_keychain)
+        # - Query server to overwrite secure ls file
+        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFilename), updatedSecure_lsFile)
 
-    def unregisterDir(plaintextDirname):
-        # - generate parent dir table key (using plaintext dir path)
-        # - encrypted parent dir keyfile name = E_{tableKey}[/pwd/ + ".tf-" +plaintext parent dirname]
-        # - query server for parent dir keyfile (using encrypted parent dir keyfile name)
-        # - decrypt/verify parent dir keyfile (using parent dir tableKey)
-        # - encrypted parent dir ls filename = E_{keyfile}[".ls-" +plaintext parent dirname]
-        # - query server for secure parent dir ls file
-        # - decrypt/verify parent dir ls file
-        # - update parent dir ls file by deleting dir, dir keyfile, and dir ls file names (plaintext & encrypted name)
-        # - secure updated parent dir ls file
-        # -query server to overwrite parent dir ls file
-        pass
+    # Remove dir from directory ls file
+    def unregisterDir(plaintextDirname, httpClient):
+        # - Query server for secure ls file
+        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFilename))
+        # - Unlock (decrypt/verify) ls file
+        lsFile = self.dirKeychain.unlock(secure_lsFile)
+        # - Update ls file by removing dirname, dir_lsFile and dirKeychain filename (plaintext & encrypted name)
+        lsFile_dir = DCDir.remove_lsEntry(lsFile, plaintextDirname, encryptedDirname)
+        lsFile_dir_ls = DCDir.remove_lsEntry(lsFile_dir, plaintext_lsFilename, encrypted_lsFilename)
+        lsFile_dir_ls_keychain = DCDir.remove_lsEntry(lsFile_dir_ls, plaintextFileKeychainName, encryptedFileKeychainName)
+        # - Secure (sign/encrypt) updated ls file
+        updatedSecure_lsFile = self.dirKeychain.lock(lsFile_dir_ls_keychain)
+        # - Query server to overwrite secure ls file
+        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFilename), updatedSecure_lsFile)
 
     # To make sure ls reference and dir contents can be compared properly in verification
     def sort():
