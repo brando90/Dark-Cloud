@@ -28,6 +28,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def __init__(self, *args):
 		BaseHTTPRequestHandler.__init__(self, *args)
 		self.encryptedURL = None
+		self.root = os.getcwd()
 
 	# Create
 	def do_PUT(self):
@@ -122,7 +123,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 			return
 
 	def parseURL(self):
-		return urlparse(self.path)
+		return self.root + '/' + urlparse(self.path)
 
 	def getQueryArg(self, key):
 		print key + " : " + repr(parse_qs(self.encryptedURL.query).get(key)[0])
