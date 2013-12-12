@@ -28,7 +28,7 @@ dcSignature = tableKey.dcSign(plaintext)
 unSigned = tableKey.dcVerify(dcSignature)
 print "test4: ", unSigned == plaintext
 
-ciphertext = tableKey.dcEncript(plaintext)
+ciphertext = tableKey.dcEncrypt(plaintext)
 decryptedData = tableKey.dcDecrypt(ciphertext)
 print "test5: ", decryptedData == plaintext
 

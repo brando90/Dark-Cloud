@@ -39,7 +39,7 @@ class DCKey:
     #returns the plaintext of a secure file (other it throws an error if validation does not work).  
     def lock(self, plaintext):
         dcSignature = self.dcSign(plaintext)
-        secureData = self.dcEncript(dcSignature)
+        secureData = self.dcEncrypt(dcSignature)
         return secureData
 
     #This function should probably not be used directly.
