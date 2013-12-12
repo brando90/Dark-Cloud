@@ -5,16 +5,50 @@ import sys
 import DCCryptoClient
 import os
 
+def keychainFn(self, name):
+    #TODO: should be dependent on username
+    return '.kc-' + name
+
+def createAccount(username, passwd):
+    HttpClient = DCHTTPClient('127.0.0.1', 8080)
+    dn = username
+    kcFn = keychainFn(dn)
+    lsFn = lsFn(dn)
+
+    userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, kcFn)
+
+    dirKeychain = DCCryptoClient.createKeyFileObj(self.username, self.passwd, kcFn)
+    encryptedDirKeychainFn = DCCryptoClient.encryptName(kcFn, userKeychain) #is this the right key
+    encryptedDn = DCCryptoClient.encryptName(dn, dirKeychain)
+    encrypted_lsFn = DCCryptoClient.encryptName(lsFn, dirKeychain)
+
+    secureKeyContent = keyObj.toSecureString(self.username, self.passwd, encryptedKeyName)
+
+    #keyfile
+    self.HttpClient.sendCreateRequest(encryptedDirKeychainFn,
+                                    True,
+                                    False,
+                                    secureKeyContent)
+
+    #lsfile
+    secureFileContent = DCCryptoClient.encryptFile("", keyObj)
+    self.HttpClient.sendCreateRequest(encrypted_lsFn,
+                                    True,
+                                    False,
+                                    secureFileContent)
+
+    #directory
+    self.HttpClient.sendCreateRequest(encryptedDn,
+                                    False,
+                                    True)
+    return DCClient(username, passwd)
+
 class DCClient:
     def __init__(self, username, passwd):
-        self.username = None
-        self.passwd = None
+        self.username = username
+        self.passwd = passwd
         self.wd = DCWorkingDirectory(self.username, self.passwd)
         self.HttpClient = DCHTTPClient('127.0.0.1', 8080)
-
-    def keychainFn(self, name):
-        #TODO: should be dependent on username
-        return '.kc-' + name
 
     def createFile(self, fn, content):
         kcFn = keychainFn(fn)
