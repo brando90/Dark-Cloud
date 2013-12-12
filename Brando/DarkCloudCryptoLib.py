@@ -44,7 +44,7 @@ class DCKey:
 
     #This function should probably not be used directly.
     #It encrypts a file in a dc encryption format (needs padding for pycrypto to work)
-    def dcEncript(self, dcSignature):
+    def dcEncrypt(self, dcSignature):
         remainder = len(dcSignature) % 16
         amountPadding = 16 - remainder
         encryptor = AES.new(self.keyAES, AES.MODE_CBC, self.iv)
