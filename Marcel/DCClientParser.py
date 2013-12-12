@@ -164,11 +164,11 @@ class DCClientParser:
             print "Incorrect number of arguments\nChange directory."
             return
         name = args[1]
-        if isUnsanitizedName(name):
-            print "Invalid file name."
-            return
         if name == '..':
             self.dcClient.wd.up(1)
+        elif isUnsanitizedName(name):
+            print "Invalid file name."
+            return
         else:
             self.dcClient.wd.down(name)
 

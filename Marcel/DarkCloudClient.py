@@ -129,7 +129,7 @@ class DCClient:
         dn = name
         kcFn = keychainFn(dn, self.username)
         lsFn = nameTo_lsFn(dn)
-        path = self.wd.toString()
+        path = self.wd.pwd()
 
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
@@ -196,7 +196,7 @@ class DCClient:
         print "readFile"
         fn = name
         kcFn = keychainFn(fn, self.username)
-        path = self.wd.toString()
+        path = self.wd.pwd()
         
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
@@ -228,7 +228,7 @@ class DCClient:
     # def readSecureDirObj(name):
     #     kfname = tableFilename(name)
     #     lsname = lsFilename(name)
-    #     path = self.wd.toString()
+    #     path = self.wd.pwd()
     #     mkObj = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
 
     #     #get encrypted keyfile name
@@ -267,7 +267,7 @@ class DCClient:
         dn = name
         kcFn = keychainFn(dn, self.username)
         lsFn = nameTo_lsFn(dn)
-        path = self.wd.toString()
+        path = self.wd.pwd()
 
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
@@ -299,7 +299,7 @@ class DCClient:
 
     def ls(self):
         name = self.wd.up(1)
-        entries = readDir(name)
+        entries = self.readDir(name)
         self.wd.down(name)
         return entries
 
@@ -309,7 +309,7 @@ class DCClient:
         kcFn = keychainFn(fn, self.username)
         if isLS:
             lsFn = nameTo_lsFn(dn)
-        path = self.wd.toString()
+        path = self.wd.pwd()
         
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
@@ -396,7 +396,7 @@ class DCClient:
         dn = args[0]
         kcFn = keychainFn(dn, self.username)
         lsFn = nameTo_lsFn(name)
-        path = self.wd.toString()
+        path = self.wd.pwd()
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
         #------- request to delete key directory ----------
