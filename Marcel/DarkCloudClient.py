@@ -129,7 +129,7 @@ class DCClient:
         dn = name
         kcFn = keychainFn(dn, self.username)
         lsFn = nameTo_lsFn(dn)
-        path = self.wd.toString()
+        path = self.wd.pwd()
 
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
@@ -187,16 +187,16 @@ class DCClient:
 
         return "Created directory: ", name
 
-    def read(encryptedName):
+    def read(self, encryptedName):
         encryptedPath = self.wd.encrypted_pwd()
         content = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedName)
         return content
 
-    def readFile(name):
+    def readFile(self,name):
         print "readFile"
         fn = name
         kcFn = keychainFn(fn, self.username)
-        path = self.wd.toString()
+        path = self.wd.pwd()
         
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
@@ -228,7 +228,7 @@ class DCClient:
     # def readSecureDirObj(name):
     #     kfname = tableFilename(name)
     #     lsname = lsFilename(name)
-    #     path = self.wd.toString()
+    #     path = self.wd.pwd()
     #     mkObj = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
 
     #     #get encrypted keyfile name
@@ -262,12 +262,12 @@ class DCClient:
 
     #     return dirObj
     
-    def readDir(name):
+    def readDir(self, name):
         print "readDir"
         dn = name
         kcFn = keychainFn(dn, self.username)
         lsFn = nameTo_lsFn(dn)
-        path = self.wd.toString()
+        path = self.wd.pwd()
 
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
@@ -297,13 +297,19 @@ class DCClient:
         plaintextEntryNames = DCDir.verifyWith_lsFile(encryptedDirEntries, lsFile)
         return plaintextEntryNames
 
-    def write(name, content, isLS=False):
+    def ls(self):
+        name = self.wd.up(1)
+        entries = self.readDir(name)
+        self.wd.down(name)
+        return entries
+
+    def write(self, name, content, isLS=False):
         print "write"
         fn = name
         kcFn = keychainFn(fn, self.username)
         if isLS:
             lsFn = nameTo_lsFn(dn)
-        path = self.wd.toString()
+        path = self.wd.pwd()
         
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
@@ -331,7 +337,7 @@ class DCClient:
 
         return name + " written"
 
-    def deleteFile(fn):
+    def deleteFile(self, fn):
         print "deleteFile"
         kcFn = keychainFn(fn, self.username)
         path = self.wd.pwd()
@@ -385,12 +391,12 @@ class DCClient:
         return
 
     # rmdir => dirs only
-    def rmdir(args):
+    def rmdir(self, args):
         print "rmdir"
         dn = args[0]
         kcFn = keychainFn(dn, self.username)
         lsFn = nameTo_lsFn(name)
-        path = self.wd.toString()
+        path = self.wd.pwd()
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
         #------- request to delete key directory ----------
@@ -447,7 +453,7 @@ class DCClient:
 
         return
 
-    def rename(name, newName, isDir=False):
+    def rename(self, name, newName, isDir=False):
         print "rename"
         kcFn = keychainFn(name, self.username)
         newKcFn = keychainFn(newName, self.username)

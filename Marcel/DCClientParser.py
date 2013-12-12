@@ -153,18 +153,22 @@ class DCClientParser:
         print "rmdir", name
 
     def ls(self, args):
-        pass
+        if len(args) != 1:
+            print "Incorrect number of arguments"
+            return
+
+        print self.dcClient.ls()
 
     def cd(self, args):
         if len(args) != 2:
             print "Incorrect number of arguments\nChange directory."
             return
         name = args[1]
-        if isUnsanitizedName(name):
-            print "Invalid file name."
-            return
         if name == '..':
             self.dcClient.wd.up(1)
+        elif isUnsanitizedName(name):
+            print "Invalid file name."
+            return
         else:
             self.dcClient.wd.down(name)
 
