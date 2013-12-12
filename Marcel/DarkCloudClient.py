@@ -271,7 +271,7 @@ class DCClient:
 
         userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
-        encryptedFileKeychainFn = self.cryptClient.encryptedName(path + '/' + kcFn, userKeychain)
+        encryptedFileKeychainFn = self.cryptClient.encryptName(path + '/' + kcFn, userKeychain)
         encryptedPath = self.wd.encrypted_pwd()
 
         #request keyfile
