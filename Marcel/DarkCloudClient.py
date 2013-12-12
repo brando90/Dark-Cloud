@@ -14,12 +14,14 @@ class DCClient:
         self.username = None
         self.passwd = None
         self.wd = DCWorkingDirectory(self.username, self.passwd)
-        self.HttpClient = DCHTTPClient(127.0.0.1, 8080)
+        self.HttpClient = DCHTTPClient('127.0.0.1', 8080)
 
     def keychainFilename(self, name):
+        #TODO: should be dependent on username
         return '.kc-' + name
 
     def lsFilename(self, name):
+        #TODO: should be dependent on username
         return '.ls-' + name
 
     def createFile(self, args):
@@ -450,6 +452,9 @@ class DCWorkingDirectory:
         self.currentRoot = otherUser
         self.pwd = []
 
+    def restoreRoot():
+        switchRoot(username)
+
     def up(steps=1):
         for i in range(0, steps):
             if len(self.pwd) > 0:
@@ -487,20 +492,69 @@ class DCWorkingDirectory:
 
 # *** Dark Cloud Secure Directory ***
 
-class DCSecureDir:
-    def __init__(self, directoryContents, lsContents):
+class DCDir:
+    # For adding/removing entries in ls reference file
+    def __init__(self, directoryContents, lsContents): # how should this be initialized
         self.contents = directoryContents
 
-    def add(encryptedName, plainTextName):
+    def verifiedRead():
         pass
 
-    def remove(plainTextName):
+    def registerFile(plaintextFilename, encryptedFilename):
+        # - generate parent dir table key (using plaintext dir path)
+        # - encrypted parent dir keyfile name = E_{tableKey}[/pwd/ + ".tf-" +plaintext parent dirname]
+        # - query server for parent dir keyfile (using encrypted parent dir keyfile name)
+        # - decrypt/verify parent dir keyfile (using parent dir tableKey)
+        # - encrypted parent dir ls filename = E_{keyfile}[".ls-" +plaintext parent dirname]
+        # - query server for secure parent dir ls file
+        # - decrypt/verify parent dir ls file
+        # - update parent dir ls file with new file and keyfile names (plaintext & encrypted name)
+        # - secure updated parent dir ls file
+        # - query server to overwrite parent dir secure ls file
         pass
 
+    def unregisterFile(plaintextFilename):
+        # - generate parent dir table key (using plaintext dir path)
+        # - encrypted parent dir keyfile name = E_{tableKey}[/pwd/ + ".tf-" +plaintext parent dirname]
+        # - query server for parent dir keyfile (using encrypted parent dir keyfile name)
+        # - decrypt/verify parent dir keyfile (using parent dir tableKey)
+        # - encrypted parent dir ls filename = E_{keyfile}[".ls-" +plaintext parent dirname]
+        # - query server for secure parent dir ls file
+        # - decrypt/verify parent dir ls file
+        # - update parent dir ls file by deleting file and keyfile names (plaintext & encrypted name)
+        # - secure updated parent dir ls file
+        # - query server to overwrite parent dir ls file
+        pass
+
+    def registerDir(plaintextDirname, encryptedDirname):
+        # - generate parent dir table key (using plaintext dir path)
+        # - encrypted parent dir keyfile name = E_{tableKey}[/pwd/ + ".tf-" +plaintext parent dirname]
+        # - query server for parent dir keyfile (using encrypted parent dir keyfile name)
+        # - decrypt/verify parent dir keyfile (using parent dir tableKey)
+        # - encrypted parent dir ls filename = E_{keyfile}[".ls-" +plaintext parent dirname]
+        # - query server for secure parent dir ls file
+        # - decrypt/verify parent dir ls file
+        # - update parent dir ls file with new dir, keyfile, and ls file names (plaintext & encrypted name)
+        # - secure updated parent dir ls file
+        # - query server to overwrite parent dir secure ls file
+        pass
+
+    def unregisterDir(plaintextDirname):
+        # - generate parent dir table key (using plaintext dir path)
+        # - encrypted parent dir keyfile name = E_{tableKey}[/pwd/ + ".tf-" +plaintext parent dirname]
+        # - query server for parent dir keyfile (using encrypted parent dir keyfile name)
+        # - decrypt/verify parent dir keyfile (using parent dir tableKey)
+        # - encrypted parent dir ls filename = E_{keyfile}[".ls-" +plaintext parent dirname]
+        # - query server for secure parent dir ls file
+        # - decrypt/verify parent dir ls file
+        # - update parent dir ls file by deleting dir, dir keyfile, and dir ls file names (plaintext & encrypted name)
+        # - secure updated parent dir ls file
+        # -query server to overwrite parent dir ls file
+        pass
+
+    # To make sure ls reference and dir contents can be compared properly in verification
     def sort():
         pass
-
-    def getLS():
 
 # -----------------------------
 
