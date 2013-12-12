@@ -22,18 +22,17 @@ File = 'file'
 Dir = 'dir'
 # -------------------------
 
+DCRoot = 'DCRoot/'
+
 class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	# *** 'Overridden' methods ***
 
 	def __init__(self, *args):
 		BaseHTTPRequestHandler.__init__(self, *args)
-		self.encryptedURL = None
-		self.root = os.getcwd()
 
 	# Create
 	def do_PUT(self):
-		self.encryptedURL = self.parseURL()
-		encryptedPath = self.encryptedURL.path
+		encryptedPath = self.tmpPath(self.getURL())
 		method = self.getMethod()
 		encryptedContents = self.getEncryptedBody()
 		isFile = self.toBoolean(self.newFile())
@@ -48,15 +47,14 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		if isFile:
 			self.createFile(encryptedPath, encryptedContents)
 		elif isDir:
-			self.createDir(encryptedPath, encryptedContents)
+			self.createDir(encryptedPath)
 		else:
 			self.send_error(400, "must set either 'file' or 'dir' to 'true' in PUT requests (not both)")
 		return
 
 	# Read
 	def do_GET(self):
-		self.encryptedURL = self.parseURL()
-		encryptedPath = self.encryptedURL.path
+		encryptedPath = self.tmpPath(self.getURL())
 		method = self.getMethod()
 		
 		if method != Read:
@@ -72,8 +70,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# Write, Rename
 	def do_POST(self):
-		self.encryptedURL = self.parseURL()
-		encryptedPath = self.encryptedURL.path
+		encryptedPath = self.tmpPath(self.getURL())
 		method = self.getMethod()
 		newEncryptedContents = None # initialized if method is Write
 		newEncryptedPath = None # initialized if method is Rename
@@ -93,8 +90,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	# Delete
 	def do_DELETE(self):
-		self.encryptedURL = self.parseURL()
-		encryptedPath = self.encryptedURL.path
+		encryptedPath = self.tmpPath(self.getURL())
 		method = self.getMethod()
 
 		if method != Delete:
@@ -122,12 +118,15 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 			self.send_error(405, "Cannot convert '" + string + "' to a boolean")
 			return
 
-	def parseURL(self):
-		return self.root + '/' + urlparse(self.path)
+	def tmpPath(self, encryptedPath):
+		return DCRoot + encryptedPath
+
+	# def parseURL(self):
+	# 	return self.path
 
 	def getQueryArg(self, key):
-		print key + " : " + repr(parse_qs(self.encryptedURL.query).get(key)[0])
-		return parse_qs(self.encryptedURL.query).get(key)[0]
+		print key + " : " + repr(parse_qs(self.getQueryString()).get(key)[0])
+		return parse_qs(self.getQueryString()).get(key)[0]
 
 	def getMethod(self):
 		return self.getQueryArg(Method)
@@ -142,6 +141,12 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		encryptedContentLength = int(self.headers.getheader('content-length'))
 		return self.rfile.read(encryptedContentLength)
 
+	def getQueryString(self):
+		return self.headers.getheader('query-string')
+
+	def getURL(self):
+		return self.headers.getheader('url')
+
 	# ----------------------
 
 
@@ -150,6 +155,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	def createFile(self, encryptedPath, encryptedContents):
 		# create file
 		fd = open(encryptedPath, 'w+')
+		print "creating file at path: " + encryptedPath
 		fd.write(encryptedContents)
 
 		self.send_response(200)
@@ -225,6 +231,8 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 def run():
 	try:
+		if not os.path.exists(DCRoot):
+			os.mkdir(DCRoot)
 		# ip and port
 		host = '127.0.0.1'
 		port = 8080

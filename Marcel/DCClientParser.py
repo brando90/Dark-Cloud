@@ -182,9 +182,10 @@ class DCClientParser:
 
     def login(self, args):
         self.username = raw_input('Username: ')
+        print 'username aquired!: '+ self.username
         self.passwd = getpass.getpass()
 
-        if isUnsanitizedName(name):
+        if isUnsanitizedName(self.username):
             print "Invalid file name."
             return
 
