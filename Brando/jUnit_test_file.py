@@ -1,4 +1,5 @@
 import DarkCloudCryptoLib as dcCryptoLib
+from Crypto.PublicKey import RSA
 import os
 
 # ##test Equal RSA keys
@@ -9,7 +10,7 @@ print "equal RSA keys: ", dcCryptoLib.equalRSAKeys(rsaKey1, rsaKey2)
 ##test lock and unlock functions work
 tableKey = dcCryptoLib.DCTableKey('password', 'username', 'keyFilename')
 tableKeyCopy = dcCryptoLib.DCCryptoClient().createUserMasterKeyObj('password', 'username', 'keyFilename')
-print tableKey == tableKeyCopy
+print "test: ",tableKey == tableKeyCopy
 
 plaintext = "brando"
 
@@ -17,11 +18,11 @@ secureData = tableKey.lock(plaintext)
 decryptedData = tableKey.unlock(secureData)
 print "test1: ", decryptedData == plaintext
 secureData = tableKey.lock(plaintext)
-decryptedData = tableKey.unlock(secureData)
-print "test2: ", decryptedData == plaintext
+decryptedData2 = tableKey.unlock(secureData)
+print "test2: ", decryptedData2 == plaintext
 secureData = tableKey.lock(plaintext)
-decryptedData = tableKey.unlock(secureData)
-print "test3: ", decryptedData == plaintext
+decryptedData3 = tableKey.unlock(secureData)
+print "test3: ", decryptedData3 == plaintext
 
 dcSignature = tableKey.dcSign(plaintext)
 unSigned = tableKey.dcVerify(dcSignature)
@@ -88,10 +89,58 @@ decryptedData = dcCryptoClient.decryptFile(secureData, keyMadeFromSecureString)
 print "decrypting a secure file works: ", decryptedData == plaintext
 print "do secure files match made by keys: ",keyF1.toSecureString('password', 'username', 'keyFilename') == keyMadeFromSecureString.toSecureString('password', 'username', 'keyFilename')
 
-emptyStr = "Marcel likes dick"
+emptyStr = ""
 secureData = tableKey.lock(emptyStr)
-print secureData
+#print secureData
 decryptedData = tableKey.unlock(secureData)
 print "locking/unlocking a empty string works: ", decryptedData == emptyStr
+
+######    ------------Sharing keys jUnit tests------------
+password = "swordfish"   # for testing
+salt = "yourAppName"     # replace with random salt if you can store one
+key1 = dcCryptoLib.makeRSAKeyObj(password, salt)
+key2 = dcCryptoLib.makeRSAKeyObj(password, salt)
+print "keys equal: ", dcCryptoLib.equalRSAKeys(key1, key2)
+
+#public_key = self.rsaKeyObj.publickey()
+#self.rsaKeyObj.sign(hashVal, '')
+
+#public keys equal
+p = "123"
+s = key1.sign(p , '')
+si = (long(s[0]),)
+pubKeyStr = key1.publickey().exportKey('PEM')
+pubKeyCopy = RSA.importKey(pubKeyStr)
+print "public keys equal: ", key1.publickey() == pubKeyCopy and key2.publickey() == pubKeyCopy
+
+print "public keys equal: ", (key1 != pubKeyCopy) and (key2 != pubKeyCopy)
+print "verify test: ", key1.publickey().verify(p, si)
+print "verify test: ", pubKeyCopy.publickey().verify(p, si)
+
+####======Sharing tests======
+plaintext = "brando123"
+dcCryptoClient = dcCryptoLib.DCCryptoClient()
+keyFileObj = dcCryptoClient.createKeyFileObj()
+readKey = dcCryptoClient.shareKeyFileAsRead(keyFileObj)
+
+secureData = dcCryptoClient.encryptFile(plaintext, keyFileObj)
+decryptedData = dcCryptoClient.decryptFile(secureData, readKey)
+
+print "reading permission works 1: ", decryptedData == plaintext
+
+
+secureReadKeyStr = readKey.toSecureString( "username", "password", "pathToKeyFilename")
+readKeyFromStr = dcCryptoClient.makeKeyFileObjFromSecureKeyData( secureReadKeyStr, "username", "password", "pathToKeyFilename")
+decryptedData2 = dcCryptoClient.decryptFile(secureData, readKeyFromStr)
+
+print "reading from secure file worked: ", decryptedData2 == plaintext
+
+
+
+
+
+
+
+
 
 
