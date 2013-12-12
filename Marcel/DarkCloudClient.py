@@ -41,6 +41,7 @@ def createAccount(username, passwd):
     self.HttpClient.sendCreateRequest(encryptedDn,
                                     False,
                                     True)
+    
     return DCClient(username, passwd)
 
 class DCClient:
