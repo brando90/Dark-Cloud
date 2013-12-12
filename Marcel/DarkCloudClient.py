@@ -57,7 +57,7 @@ class DCClient:
 
         fileKeychain = DCCryptoClient.createKeyFileObj(self.username, self.passwd, kcFn)
         encryptedFileKeychainFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain) #is this the right key
-        encryptedFn = DCCryptoClient.encryptName(path + '/' + name, fileKeychain)
+        encryptedFn = DCCryptoClient.encryptName(path + '/' + fn, fileKeychain)
 
         parentDn = self.wd.up(1)
         # Initialize dcdir with: parentDn, pwd, encrypted_pwd, fileKeychain
@@ -515,14 +515,73 @@ class DCDir:
         return '.ls-' + dirname
 
     @staticmethod
-    def add_lsEntry(lsFile, plaintextFilename, encryptedFilename):
+    def addFile_lsEntry(lsFile, plaintextFn, encryptedFn):
+        #TODO: implement this
+        ptFnLength = len(plaintextFn)
+        encFnLength = len(encryptedFn)
+        lengthlessEntry = 'fn,' + str(ptFnLength) + ',' + str(encFnLength) + ',' + plaintextFn + encryptedFn
+        entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
+        entry = entryLength + ',' + lengthlessEntry)
+        return lsFile.append(entry)
+
+    @staticmethod
+    #TODO: Don't need both ptFn & encFn
+    def removeFile_lsEntry(lsFile, plaintextFn, encryptedFn):
         #TODO: implement this
         pass
 
     @staticmethod
-    def remove_lsEntry(lsFile, plaintextFilename, encryptedFilename):
-        #TODO: implement this
+    def addDir_lsEntry(lsFile, plaintextDn, encryptedDn):
+        ptDnLength = len(plaintextDn)
+        encDnLength = len(encryptedDn)
+        entry = 'dn,' + ptDnLength + ',' + encDnLength + ',' + plaintextDn + encryptedDn
+        lengthlessEntry = len(lengthlessEntry)
+        entry = entryLength + ',' + lengthlessEntry)
+        return lsFile.append(entry)
+        
+
+    @staticmethod
+    def removeDir_lsEntry(lsFile, plaintextDn, encryptedDn):
         pass
+
+    @staticmethod
+    # Assume index starts at correct offset
+    def readEntry(lsFile, offset):
+        # Entry looks as follows: 
+        #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName
+        # lengths:: entry length, ptName length, and encName length
+        lengths = []
+        isFile = False
+        isDir = False
+        commaCount = 0
+        stringBuilder = ''
+        plaintextNameStart = None
+        for i in range(offset,len(lsFile)):
+            char = lsfile[i]
+            if char != ',':
+                lengthBuilder.append(char)
+            else:
+                commaCount +=1
+                if commaCount == 2: # currently building fn/dn
+                    if stringBuilder == 'fn':
+                        isFile = True
+                    elif stringBuilder == 'dn':
+                        isDir = True
+                else: # currenty building a length
+                    length = int(stringBuilder)
+                    lengths.append(length)
+                    if commaCount == 4:
+                        plaintextNameStart = i + 1
+                # Reset stringBuilder
+                stringBuilder = ''
+        entryLength = lengths[0]
+        plaintextNameLength = lengths[1]
+        encryptedNameLength = lengths[2]
+        plaintextName = lsFile[plaintextNameStart:plaintextNameStart+plaintextNameLength]
+        encryptedNameStart = plaintextNameStart + plaintextNameLength + 1
+        encryptedName = lsFile[encryptedNameStart:encryptedNameStart+encryptedNameLength]
+        return DClsEntry(isFile, isDir, plaintextName, encryptedName)
+
 
     @staticmethod
     def verifiedDirKeychain():
@@ -546,9 +605,6 @@ class DCDir:
     
     def fullEncryptedPath(name):
         return self.encryptedDirpath + '/' + name
-
-    def verifiedRead():
-        pass
 
     # Add file to directory ls file
     def registerFile(plaintextFn, encryptedFn, plaintextFileKeychainFn, encryptedFileKeychainFn, httpClient):
@@ -619,6 +675,20 @@ class DCDir:
     def sort():
         #TODO: implement this
         pass
+# -------------------------------------
+
+
+# *** Dark Cloud ls entry ***
+
+class DClsEntry:
+    def __init__(self, isFile, isDir, plaintextName, encryptedName):
+        if (isFile and isDir) or (not isFile and not isDir):
+            raise ValueError("Entry should be EITHER a filename OR a dirname")
+        self.isFile = isFile
+        self.isDir = isDir
+        self.plaintextName = plaintextName
+        self.encryptedName = encryptedName
+
 # -----------------------------
 
 
