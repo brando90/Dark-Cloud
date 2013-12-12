@@ -211,8 +211,8 @@ class DCCryptoClient:
     def createUserMasterKeyObj(self, username, password, pathToKeyFilename):
         return DCTableKey(username, password, pathToKeyFilename)
 
-    def makeKeyFileObjFromSecureKeyData(self, secureKeyFileData, username, password, keyFileName):
-        keyObj = DCTableKey(username, password, keyFileName)
+    def makeKeyFileObjFromSecureKeyData(self, secureKeyFileData, username, password, pathToKeyFilename):
+        keyObj = DCTableKey(username, password, pathToKeyFilename)
         keyFileData = keyObj.unlock(secureKeyFileData)
         keysLengths = []
         commas = 0
