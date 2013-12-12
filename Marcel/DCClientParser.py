@@ -12,7 +12,7 @@ class CommandError(Exception):
     pass
 
 def isUnsanitizedName(name):
-    return re.match("\..*|\.kc-.*|\.ls-.*", name):
+    return re.match("\..*|\.kc-.*|\.ls-.*", name)
 
 class DCClientParser:
     """docstring for DarkCloudClientParser"""
@@ -38,7 +38,7 @@ class DCClientParser:
             'help': self.show_help,
             'cd': self.cd,
             'vim': self.vim,
-            'newAccount': newAccount,
+            'newAccount': self.newAccount,
             'readFiles': self.showReadFiles #maybe
         }
         
@@ -71,7 +71,7 @@ class DCClientParser:
             print "Invalid file name."
             return
 
-        #self.dcClient.createFile(name, content)
+        self.dcClient.createFile(name, content)
         print "create ", name, content
 
         print "Created file: ", name
@@ -86,7 +86,7 @@ class DCClientParser:
             print "Invalid file name."
             return
 
-        #self.dcClient.delete(name)
+        self.dcClient.delete(name)
         print "delete ", name
         print "Deleted file: ", name
 
@@ -100,7 +100,7 @@ class DCClientParser:
             return
 
         print "Reading file: " + name + " ..."
-        #content = self.dcClient.read(name)
+        content = self.dcClient.read(name)
         content = "test"
         with open('tmp/' + name, 'w') as fd:
             return fd.write(content)
@@ -115,7 +115,7 @@ class DCClientParser:
             return
         with open('tmp/' + name, 'r') as fd:
             content = fd.read()
-            #self.dcClient.write(name, content)
+            self.dcClient.write(name, content)
             print "write name -> ", content
 
     def rename(self, args):
@@ -127,7 +127,7 @@ class DCClientParser:
         if isUnsanitizedName(name) or isUnsanitizedName(newName):
             print "Invalid file name."
             return
-        #self.dcClient.rename(name, newName)
+        self.dcClient.rename(name, newName)
         print "rename", name, newName
 
     def mkdir(self, args):
@@ -138,7 +138,7 @@ class DCClientParser:
         if isUnsanitizedName(name):
             print "Invalid file name."
             return
-        #self.dcClient.mkdir(name)
+        self.dcClient.mkdir(name)
         print "mkdir", name
 
     def rmdir(self, args):
@@ -149,7 +149,7 @@ class DCClientParser:
         if isUnsanitizedName(name):
             print "Invalid file name."
             return
-        #self.dcClient.rmdir(name)
+        self.dcClient.rmdir(name)
         print "rmdir", name
 
     def ls(self, args):
@@ -188,7 +188,7 @@ class DCClientParser:
             print "Invalid file name."
             return
 
-        #self.dcClient = DCClient(self.username, self.passwd)
+        self.dcClient = DarkCloudClient.DCClient(self.username, self.passwd)
         self.loggedIn = True
         prompt = "DarkCloud:" + self.username + " >>> "
 

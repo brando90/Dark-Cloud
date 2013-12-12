@@ -2,45 +2,48 @@
 
 import httplib
 import sys
-import DCCryptoClient
+from DCCryptoClient import *
 import os
+from DCHTTPClient import *
 
-def keychainFn(self, name, username):
+def keychainFn(name, username):
     return '.kc-' + username + '-' + name
 
-def lsFn(dirname):
+def nameTo_lsFn(dirname):
     return '.ls-' + dirname
 
 def createAccount(username, passwd):
     HttpClient = DCHTTPClient('127.0.0.1', 8080)
     dn = username
     kcFn = keychainFn(dn, username)
-    lsFn = lsFn(dn)
+    lsFn = nameTo_lsFn(dn)
+    cryptClient = DCCryptoClient()
 
-    userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, kcFn)
+    userKeychain = cryptClient.createUserMasterKeyObj(username, passwd, kcFn)
 
-    dirKeychain = DCCryptoClient.createKeyFileObj()
-    encryptedDirKeychainFn = DCCryptoClient.encryptName(kcFn, userKeychain) #is this the right key
-    encryptedDn = DCCryptoClient.encryptName(dn, dirKeychain)
-    encrypted_lsFn = DCCryptoClient.encryptName(lsFn, dirKeychain)
+    dirKeychain = cryptClient.createKeyFileObj()
+    encryptedDirKeychainFn = cryptClient.encryptName(kcFn, userKeychain) #is this the right key
+    encryptedDn = cryptClient.encryptName(dn, dirKeychain)
+    encrypted_lsFn = cryptClient.encryptName(lsFn, dirKeychain)
 
-    secureKeyContent = keyObj.toSecureString(self.username, self.passwd, encryptedKeyName)
+    secureKeyContent = dirKeychain.toSecureString(username, passwd, encryptedDirKeychainFn)
 
     #keyfile
-    self.HttpClient.sendCreateRequest(encryptedDirKeychainFn,
+    HttpClient.sendCreateRequest(encryptedDirKeychainFn,
                                     True,
                                     False,
                                     secureKeyContent)
 
     #lsfile
-    secureFileContent = DCCryptoClient.encryptFile("", keyObj)
-    self.HttpClient.sendCreateRequest(encrypted_lsFn,
+
+    secureFileContent = cryptClient.encryptFile("", dirKeychain)
+    HttpClient.sendCreateRequest(encrypted_lsFn,
                                     True,
                                     False,
                                     secureFileContent)
 
     #directory
-    self.HttpClient.sendCreateRequest(encryptedDn,
+    HttpClient.sendCreateRequest(encryptedDn,
                                     False,
                                     True)
     
@@ -52,15 +55,16 @@ class DCClient:
         self.passwd = passwd
         self.wd = DCWorkingDirectory(self.username, self.passwd)
         self.HttpClient = DCHTTPClient('127.0.0.1', 8080)
+        self.cryptClient = DCCryptoClient()
 
     def createFile(self, fn, content):
         kcFn = keychainFn(fn, self.username)
         path = self.wd.pwd()
-        userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+        userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
-        fileKeychain = DCCryptoClient.createKeyFileObj()
-        encryptedFileKeychainFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain) #is this the right key
-        encryptedFn = DCCryptoClient.encryptName(path + '/' + fn, fileKeychain)
+        fileKeychain = self.cryptClient.createKeyFileObj()
+        encryptedFileKeychainFn = self.cryptClient.encryptName(path + '/' + kcFn, userKeychain) #is this the right key
+        encryptedFn = self.cryptClient.encryptName(path + '/' + fn, fileKeychain)
 
         parentDn = self.wd.up(1)
         parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.password, parentDn, self.wd.encrypted_pwd(), self.HttpClient)
@@ -99,7 +103,7 @@ class DCClient:
         #request to create regular file on server
 
         #need to encrypt empty string?
-        secureFileContent = DCCryptoClient.encryptFile(content, fileKeychain)
+        secureFileContent = self.cryptClient.encryptFile(content, fileKeychain)
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedFn,
                                         True,
                                         False,
@@ -110,15 +114,15 @@ class DCClient:
     def mkdir(self, name):
         dn = name
         kcFn = keychainFn(dn, self.username)
-        lsFn = lsFn(dn)
+        lsFn = nameTo_lsFn(dn)
         path = self.wd.toString()
 
-        userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+        userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
-        dirKeychain = DCCryptoClient.createKeyFileObj()
-        encryptedDirKeychainFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain) #is this the right key
-        encryptedDn = DCCryptoClient.encryptName(path + '/' + dn, dirKeychain)
-        encrypted_lsFn = DCCryptoClient.encryptName(path + '/' + lsFn, dirKeychain) # is the path needed??
+        dirKeychain = self.cryptClient.createKeyFileObj()
+        encryptedDirKeychainFn = self.cryptClient.encryptName(path + '/' + kcFn, userKeychain) #is this the right key
+        encryptedDn = self.cryptClient.encryptName(path + '/' + dn, dirKeychain)
+        encrypted_lsFn = self.cryptClient.encryptName(path + '/' + lsFn, dirKeychain) # is the path needed??
 
         parentDn = self.wd.up(1)
         parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.password, parentDn, self.wd.encrypted_pwd(), self.HttpClient)
@@ -155,7 +159,7 @@ class DCClient:
                                         secureKeyContent)
 
         #lsfile
-        secureFileContent = DCCryptoClient.encryptFile("", dirKeychain)
+        secureFileContent = self.cryptClient.encryptFile("", dirKeychain)
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encrypted_lsFn,
                                         True,
                                         False,
@@ -170,34 +174,36 @@ class DCClient:
 
     def read(encryptedName):
         encryptedPath = self.wd.encrypted_pwd()
-        content = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFileName)
+        content = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedName)
         return content
 
     def readFile(name):
-        kfname = tableFilename(name)
+        fn = name
+        kcFn = keychainFn(fn, self.username)
         path = self.wd.toString()
-        mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
+        
+        userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
         #get encrypted keyfile name
-        encryptedKeyFileName = DCCryptoClient.encryptedName(path + '/' + kfname, mkObj)
+        encryptedFileKeychainFn = self.cryptClient.encryptedName(path + '/' + kcFn, userKeychain)
 
         #TODO:check that keys exist for all parts of the encrypted path
 
-        secureKeyfileContent = self.read(encryptKeyFileName)
+        secureKeyfileContent = self.read(encryptedFileKeychainFn)
 
         #construct key object
-        keyObj = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, path + '/' + kfname)
+        fileKeychain = self.cryptClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, path + '/' + kcFn)
 
         #save keyobj for later
-        DCCryptoClient.addKeyObj(path + '/' + kfname, keyObj)
+        self.cryptClient.addKeyObj(path + '/' + kcFn, fileKeychain)
 
         #request encrypted file using encrypted file name
-        encryptedFileName = DCCryptoClient.encryptName(path + '/' + name, keyObj)
+        encryptedFn = self.cryptClient.encryptName(path + '/' + fn, fileKeychain)
 
-        encryptedFileContent = self.read(encryptedFileName)
+        encryptedFileContent = self.read(encryptedFn)
 
         #decrypt file contents
-        decryptedFileContent = DCCryptoClient.decryptFile(encryptedFileContent, keyObj)
+        decryptedFileContent = self.cryptClient.decryptFile(encryptedFileContent, fileKeychain)
 
         #verify contents
 
@@ -207,10 +213,10 @@ class DCClient:
     #     kfname = tableFilename(name)
     #     lsname = lsFilename(name)
     #     path = self.wd.toString()
-    #     mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
+    #     mkObj = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
 
     #     #get encrypted keyfile name
-    #     encryptedKeyFileName = DCCryptoClient.encryptName(path + '/' + kfname, mkObj)
+    #     encryptedKeyFileName = self.cryptClient.encryptName(path + '/' + kfname, mkObj)
 
     #     #TODO:check that keys exist for all parts of the encrypted path
 
@@ -220,20 +226,20 @@ class DCClient:
     #     secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFileName)
 
     #     #construct key object
-    #     keyObj = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
+    #     keyObj = self.cryptClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
 
     #     #save keyobj for later
-    #     DCCryptoClient.addKeyObj(path + '/' + lsname, keyObj)
+    #     self.cryptClient.addKeyObj(path + '/' + lsname, keyObj)
 
     #     #request encrypted file using encrypted file name
-    #     encryptedLSFileName = DCCryptoClient.encryptName(path + '/' + lsname, keyObj)
-    #     encryptedDirName = DCCryptoClient.encryptName(path + '/' + name, keyObj)
+    #     encryptedLSFileName = self.cryptClient.encryptName(path + '/' + lsname, keyObj)
+    #     encryptedDirName = self.cryptClient.encryptName(path + '/' + name, keyObj)
 
     #     encryptedLSFileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName)
     #     dirContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedDirName)
 
     #     #decrypt file contents
-    #     decryptedLSFileContent = DCCryptoClient.decryptFile(encryptedLSFileContent, keyObj)
+    #     decryptedLSFileContent = self.cryptClient.decryptFile(encryptedLSFileContent, keyObj)
 
     #     #verify contents
     #     dirObj = DCSecureDir(dirContent, decryptedLSFileContent)
@@ -241,36 +247,68 @@ class DCClient:
     #     return dirObj
     
     def readDir(name):
-        dirObj = self.readSecureDirObj(name)
-        return dirObj.getLS()
+        dn = name
+        kcFn = keychainFn(dn, self.username)
+        lsFn = nameTo_lsFn(dn)
+        path = self.wd.toString()
+
+        userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+
+        encryptedFileKeychainFn = self.cryptClient.encryptedName(path + '/' + kcFn, userKeychain)
+        encryptedPath = self.wd.encrypted_pwd()
+
+        #request keyfile
+        secureKeyContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedFileKeychainFn)
+
+        #construct key object
+        dirKeychain = self.cryptClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
+
+        #save keyobj for later
+        self.cryptClient.addKeyObj(path + '/' + lsFn, dirKeychain)
+
+        #request encrypted file using encrypted file name
+        encrypted_lsFn = self.cryptClient.encryptName(path + '/' + lsFn, dirKeychain)
+        encryptedDn = self.cryptClient.encryptName(path + '/' + dn, dirKeychain)
+
+        encryptedLSFileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName)
+        encryptedDirEntries = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedDirName)
+
+        #decrypt file contents
+        lsFile = self.cryptClient.decryptFile(encryptedLSFileContent, keyObj)
+
+        #verify contents
+        plaintextEntryNames = DCDir.verifyWith_lsFile(encryptedDirEntries, lsFile)
+        return plaintextEntryNames
 
     def write(name, content, isLS=False):
-        kfname = tableFilename(name)
+        fn = name
+        kcFn = keychainFn(fn, self.username)
         if isLS:
-            name = lsFilename(name)
+            lsFn = nameTo_lsFn(dn)
         path = self.wd.toString()
-        mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
+        
+        userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
         #TODO: If file doesn't exist create it
 
         #get associated key for this file
-        if DCCryptoClient.hasKey(kfname):
-            keyObj = DCCryptoClient.getKey(kfname)
+        if self.cryptClient.hasKey(kcFn):
+            fileKeychain = self.cryptClient.getKey(kcFn)
         else:
             #request keyfile
-            encryptedKeyFileName = DCCryptoClient.encryptName(path + '/' + kfname, mkObj)
+            encryptedKeychainFn = self.cryptClient.encryptName(path + '/' + kcFn, userKeychain)
             encryptedPath = self.wd.encrypted_pwd()
-            secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFileName)
-            keyObj = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, path + '/' + kfname)
+            secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeychainFn)
+            fileKeychain = self.cryptClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, path + '/' + kcFn)
 
         #encrypt file's new contents
-        encryptedContent = DCCryptoClient.encryptFile(content, keyObj)
+        encryptedContent = self.cryptClient.encryptFile(content, fileKeychain)
 
         #craft write request to server
-        encryptedFileName = DCCryptoClient.encryptName(path + '/' + name, keyObj)
+        encryptedFn = self.cryptClient.encryptName(path + '/' + fn, fileKeychain)
         encryptedPath = self.wd.encrypted_pwd()
 
-        self.HttpClient.sendWriteRequest(encryptedPath + '/' + encryptedFileName,
+        self.HttpClient.sendWriteRequest(encryptedPath + '/' + encryptedFn,
                                          encryptedContent)
 
         return name + " written"
@@ -278,28 +316,28 @@ class DCClient:
     def deleteFile(fn):
         kcFn = keychainFn(fn, self.username)
         path = self.wd.pwd()
-        userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+        userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
 
         #------- request to delete key file ----------
         #get encrypted keyfile name
-        encryptedFileKeychainFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain)
+        encryptedFileKeychainFn = self.cryptClient.encryptName(path + '/' + kcFn, userKeychain)
 
         #request keyfile
         secureKeychainContent = self.HttpClient.sendReadRequest(self.wd.encrypted_pwd() + '/' + encryptedFileKeychainFn)
 
         #construct key object
-        dirKeychain = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd)
+        fileKeychain = self.cryptClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd)
 
         #request encrypted file using encrypted file name
-        encryptedDn = DCCryptoClient.encryptName(path + '/' + dn, dirKeychain)
+        encryptedFn = self.cryptClient.encryptName(path + '/' + fn, fileKeychain)
 
         parentDn = self.wd.up(1)
         parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.password, parentDn, self.wd.encrypted_pwd(), self.HttpClient)
         # Initialize dcdir with: parentDn, pwd, encrypted_pwd, parentDirKeychain
         dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), parentDirKeychain)
         # 
-        dcdir.unregisterDir(encryptedFn, encryptedFileKeychainFn, self.HttpClient)
+        dcdir.unregisterFile(encryptedFn, encryptedFileKeychainFn, self.HttpClient)
         self.wd.down(parentDn)
 
         # # *** BEGIN: Replaced with DCDir implementation above ***
@@ -319,10 +357,10 @@ class DCClient:
 
         #---------- request to delete file -----------
         #delete keyfile
-        self.HttpClient.sendDeleteRequest(encryptedPath + '/' + encryptedKeyName)
+        self.HttpClient.sendDeleteRequest(encryptedPath + '/' + encryptedFileKeychainFn)
 
         #delete file
-        self.HttpClient.sendDeleteRequest(encryptedPath + '/' + encryptedFileName)
+        self.HttpClient.sendDeleteRequest(encryptedPath + '/' + encryptedFn)
 
         return
 
@@ -330,24 +368,24 @@ class DCClient:
     def rmdir(args):
         dn = args[0]
         kcFn = keychainFn(dn, self.username)
-        lsFn = lsFn(name)
+        lsFn = nameTo_lsFn(name)
         path = self.wd.toString()
-        userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+        userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
         #------- request to delete key directory ----------
         #get encrypted keyfile name
-        encryptedKeyFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain)
+        encryptedKeychainFn = self.cryptClient.encryptName(path + '/' + kcFn, userKeychain)
         encryptedPath = self.wd.encrypted_pwd()
 
         #request keyfile
-        secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFn)
+        secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeychainFn)
 
         #construct key object
-        dirKeychain = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
+        dirKeychain = self.cryptClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
 
         #request encrypted file using encrypted file name
-        encryptedDn = DCCryptoClient.encryptName(path + '/' + dn, dirKeychain)
-        encrypted_lsFn = DCCryptoClient.encryptName(path + '/' + lsFn, dirKeychain)
+        encryptedDn = self.cryptClient.encryptName(path + '/' + dn, dirKeychain)
+        encrypted_lsFn = self.cryptClient.encryptName(path + '/' + lsFn, dirKeychain)
 
         parentDn = self.wd.up(1)
         parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.password, parentDn, self.wd.encrypted_pwd(), self.HttpClient)
@@ -377,50 +415,48 @@ class DCClient:
 
         #---------- request to delete directory -----------
         #delete keyfile
-        self.HttpClient.sendDeleteRequest(encryptedPath + '/' + encryptedKeyName)
+        self.HttpClient.sendDeleteRequest(encryptedPath + '/' + encryptedKeychainFn)
 
         #delete file
-        self.HttpClient.sendDeleteRequest(encryptedPath + '/' + encryptedFileName)
+        self.HttpClient.sendDeleteRequest(encryptedPath + '/' + encryptedDn)
 
         #delete ls file
-        self.HttpClient.sendDeleteRequest(encryptedPath + '/' + encryptedLSFileName)
+        self.HttpClient.sendDeleteRequest(encryptedPath + '/' + encrypted_lsFn)
 
         return
 
-    def rename(args, isDir=False):
-        name = args[0]
-        newName = args[1]
+    def rename(name, newName, isDir=False):
         kcFn = keychainFn(name, self.username)
         newKcFn = keychainFn(newName, self.username)
         lsFn = lsFilename(name)
-        new_lsFn = lsFilename(lsname)
+        new_lsFn = lsFilename(newName)
         path = self.wd.pwd()
-        userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
-        newUserKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + newKcFn)
+        userKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+        newUserKeychain = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + newKcFn)
 
         #TODO: check if name exists?
         #TODO: update keys in Key dictionary
 
         #------- get new encrypted names ----------
         #get encrypted keyfile name
-        encryptedKeychainFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain)
-        newEncryptedKeychainFn = DCCryptoClient.encryptName(path + '/' + newKcFn, newUserKeychain)
+        encryptedKeychainFn = self.cryptClient.encryptName(path + '/' + kcFn, userKeychain)
+        newEncryptedKeychainFn = self.cryptClient.encryptName(path + '/' + newKcFn, newUserKeychain)
         encryptedPath = self.wd.encrypted_pwd()
 
         #request keyfile
         secureKeychainContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeychainFn)
 
         #construct key object
-        keyChain = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd)
+        keyChain = self.cryptClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd)
 
         #request encrypted file using encrypted file name
-        encryptedName = DCCryptoClient.encryptName(path + '/' + name, keyChain)
-        newEncryptedName = DCCryptoClient.encryptName(path + '/' + newName, keyChain)
+        encryptedName = self.cryptClient.encryptName(path + '/' + name, keyChain)
+        newEncryptedName = self.cryptClient.encryptName(path + '/' + newName, keyChain)
         encrypted_lsFn = None
         newEncrypted_lsFn = None
         if isDir:
-            encrypted_lsFn = DCCryptoClient.encryptName(path + '/' + lsFn, keyChain)
-            newEncrypted_lsFn = DCCryptoClient.encryptName(path + '/' + new_lsFn, keyChain)
+            encrypted_lsFn = self.cryptClient.encryptName(path + '/' + lsFn, keyChain)
+            newEncrypted_lsFn = self.cryptClient.encryptName(path + '/' + new_lsFn, keyChain)
 
         parentDn = self.wd.up(1)
         parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.password, parentDn, self.wd.encrypted_pwd(), self.HttpClient)
@@ -463,13 +499,13 @@ class DCClient:
         # # --- END ---
 
         # -------- set new names -------------------
-        self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedFileName,
-                                        encryptedPath + '/' + newEncryptedFileName)
-        self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyName,
-                                        encryptedPath + '/' + newEncryptedKeyName)
+        self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedName,
+                                        encryptedPath + '/' + newEncryptedName)
+        self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeychainFn,
+                                        encryptedPath + '/' + newEncryptedKeychainFn)
         if isDir:
-            self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName,
-                                            encryptedPath + '/' + newEncryptedLSFileName)
+            self.HttpClient.sendReadRequest(encryptedPath + '/' + encrypted_lsFn,
+                                            encryptedPath + '/' + newEncrypted_lsFn)
 
 # -------------------------------
 
@@ -535,7 +571,7 @@ class DCDir:
     # *** Class attrs & methods ***
 
     @staticmethod
-    def lsFn(dirname):
+    def nameTo_lsFn(dirname):
         return '.ls-' + dirname
 
     @staticmethod
@@ -684,9 +720,10 @@ class DCDir:
 
     def __init__(self, dn, encryptedDirpath, dirKeychain): # how should this be initialized
         self.dn = dn
-        self.encryptedDirname = DCCryptoClient.encryptName(dn, dirKeychain)
+        self.cryptClient = DCCryptoClient
+        self.encryptedDirname = self.cryptClient.encryptName(dn, dirKeychain)
         self.encryptedDirpath = encryptedDirpath
-        self.lsFn = DCDir.lsFn(dn)
+        self.lsFn = DCDir.nameTo_lsFn(dn)
         self.encrypted_lsFn = dcCryptoClient.encryptName(self.lsFn, dirKeychain)
         self.dirKeychain = dirKeychain
     
