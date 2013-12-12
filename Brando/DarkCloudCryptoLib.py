@@ -193,9 +193,29 @@ class DCCryptoClient:
         return self.htKeys.get(pathname)
 
     def encryptName(self, name, keyObj):
-        return keyObj.dcEncrypt(name) 
+        encryptedName = keyObj.dcEncrypt(name) 
+        encryptedNameUnixAccetpableFormat = self.makeStringToAcceptableUnixFormat(encryptedName)
+        return encryptedNameUnixAccetpableFormat
+
+    def makeStringToAcceptableUnixFormat(self, encryptedName):
+        array = []
+        length = len(encryptedName)
+        newName = encryptname
+        for i in range(0,length):
+            c = encryptname[i]
+            if(c = '\0'):
+                newName = newName[:i]+"T"+newName[i+1:]
+                array.append(i)
+        numberOfSubs = len(array)
+        for i in range(0,numberOfSubs):
+            index = array[i]
+            newName = str(index)+','+newName
+        newName = str(numberOfSubs)+','+newName
+        return newName
 
     def decryptName(self, encryptname, keyObj):
+        #a\n\nta
+        #attta
         return keyObj.dcDecrypt(encryptname)
 
     def encryptFile(self, fileContent, keyObj):

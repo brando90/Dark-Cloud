@@ -141,8 +141,65 @@ dcCryptoClient = dcCryptoLib.DCCryptoClient()
 keyFileObj = dcCryptoClient.createKeyFileObj()
 name1 = dcCryptoClient.encryptName( "name", keyFileObj)
 name2 = dcCryptoClient.encryptName( "name", keyFileObj)
+name2 = dcCryptoClient.encryptName( "name", keyFileObj)
 
-print name1 == name2
+print "name test: ",name1 == name2
+
+##---test RSA pycrypto
+p = "brando123"
+clib = dcCryptoLib.DCCryptoClient()
+k1 = dcCryptoLib.DCTableKey('password', 'username', 'keyFilename')
+k2 = dcCryptoLib.DCTableKey('password', 'username', 'keyFilename')
+k3 = dcCryptoLib.DCTableKey('password', 'username', 'keyFilename')
+
+secureData = k1.lock(p)
+decryptedData = k1.unlock(secureData)
+secureData = k1.lock(decryptedData)
+decryptedData = k1.unlock(secureData)
+secureData = k1.lock(decryptedData)
+decryptedData = k1.unlock(secureData)
+secureData = k1.lock(decryptedData)
+decryptedData = k1.unlock(secureData)
+secureData = k1.lock(decryptedData)
+decryptedData = k1.unlock(secureData)
+
+print "multiple decryptions: ", decryptedData == p
+print "different key decryptions", p == k2.unlock(k2.lock(p)) and p == k3.unlock(k3.lock(p))
+
+n = "name"
+
+encryptedName = clib.encryptName(n, k1)
+
+en1 = clib.encryptName("name", k1)
+en2 = clib.encryptName(n, k2)
+en3 = clib.encryptName(n, k3)
+en4 = clib.encryptName(n, k1)
+
+print "encrypt simple test1: ", en1 == en2
+print "encrypt simple test2: ", en2 == en3
+print "multiple encrypt name test 1: ", en1 == en2 and en1 == en3 and en1 == en4
+print "multiple encrypt name test 2: ", en2 == en3 and en3 == en4
+
+den1 = clib.decryptName(en1, k1)
+den2 = clib.decryptName(en2, k2)
+den3 = clib.decryptName(en3, k3)
+den4 = clib.decryptName(en4, k1)
+
+print "decrypt name simple test: ", den1 == n
+print "decrypt names: " , den1 == n and den1 == den2 and den2 == den3 and den3 == den4 and den4 == n
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
