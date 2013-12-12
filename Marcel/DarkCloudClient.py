@@ -614,8 +614,8 @@ class DCDir:
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file by deleting filename and fileKeychain name (plaintext & encrypted name)
-        lsFile_file = DCDir.remove_lsFileEntry(lsFile, plaintextFn, encryptedFn)
-        lsFile_file_keychain = DCDir.remove_lsFileEntry(lsFile_file, plaintextFileKeychainFn, encryptedFileKeychainFn)
+        lsFile_file = DCDir.remove_lsFileEntry(lsFile, encryptedFn)
+        lsFile_file_keychain = DCDir.remove_lsFileEntry(lsFile_file, encryptedFileKeychainFn)
         #TODO: sort lsFile
         # - Secure (sign/encrypt) updated ls file
         updatedSecure_lsFile = self.dirKeychain.lock(lsFile_file_keychain)
@@ -645,9 +645,9 @@ class DCDir:
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file by removing dirname, dir_lsFile and dirKeychain filename (plaintext & encrypted name)
-        lsFile_dir = DCDir.remove_lsEntry(lsFile, plaintextDn, encryptedDn)
-        lsFile_dir_ls = DCDir.remove_lsEntry(lsFile_dir, plaintext_lsFn, encrypted_lsFn)
-        lsFile_dir_ls_keychain = DCDir.remove_lsEntry(lsFile_dir_ls, plaintextDirKeychainFn, encryptedDirKeychainFn)
+        lsFile_dir = DCDir.remove_lsEntry(lsFile, encryptedDn)
+        lsFile_dir_ls = DCDir.remove_lsEntry(lsFile_dir, encrypted_lsFn)
+        lsFile_dir_ls_keychain = DCDir.remove_lsEntry(lsFile_dir_ls, encryptedDirKeychainFn)
         #TODO: sort lsFile
         # - Secure (sign/encrypt) updated ls file
         updatedSecure_lsFile = self.dirKeychain.lock(lsFile_dir_ls_keychain)
