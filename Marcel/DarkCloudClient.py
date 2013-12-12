@@ -545,8 +545,8 @@ class DCDir:
         #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
         ptDnLength = len(plaintextDn)
         encDnLength = len(encryptedDn)
-        entry = 'dn,' + ptDnLength + ',' + encDnLength + ',' + plaintextDn + ',' + encryptedDn + ';'
-        lengthlessEntry = len(lengthlessEntry)
+        lengthLessentry = 'dn,' + str(ptDnLength) + ',' + str(encDnLength) + ',' + plaintextDn + ',' + encryptedDn + ';'
+        entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
         entry = entryLength + ',' + lengthlessEntry
         return lsFile + entry
         
@@ -608,6 +608,19 @@ class DCDir:
     def verifiedDirKeychain():
         #TODO: implement this
         pass
+
+    @staticmethod
+    def sorted_lsEntries(lsFile):
+        entries = []
+        offset = 0
+        while offset < len(lsFile):
+            entry, newOffset = DCDir.readEntry(lsFile, offset)
+            entries.append(entry)
+        # Sort by plaintext names
+        sorted_entries = sorted(entries, key=lambda entry: entry.plaintextName)
+        # Sorted lsFile construction
+        return ''.join([str(sorted_entry) for sorted_entry in sorted_entries])
+
 
     # ------------------------
 
@@ -689,11 +702,6 @@ class DCDir:
         # - Query server to overwrite secure ls file
         return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
-    # To make sure ls reference and dir contents can be compared properly in verification
-    # this should probably be static
-    def sort():
-        #TODO: implement this
-        pass
 # -------------------------------------
 
 
@@ -707,6 +715,20 @@ class DClsEntry:
         self.isDir = isDir
         self.plaintextName = plaintextName
         self.encryptedName = encryptedName
+
+    def __str__(self):
+        fnSlashDn = ''
+        if self.isFile:
+            fnSlashDn = 'fn'
+        elif self.isDir:
+            fnSlashDn = 'dn'
+        ptNameLength = len(self.plaintextName)
+        encNameLength = len(self.encryptedName)
+        lengthlessEntry = 'fn,' + str(ptNameLength) + ',' + str(encNameLength) + ',' + self.plaintextName + ',' + self.encryptedName + ';'
+        entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
+        entry = str(entryLength) + ',' + lengthlessEntry
+        return entry
+
 
 # -----------------------------
 
