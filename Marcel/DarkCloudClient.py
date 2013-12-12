@@ -26,23 +26,23 @@ def createAccount(username, passwd):
     encryptedDn = cryptClient.encryptName(dn, dirKeychain)
     encrypted_lsFn = cryptClient.encryptName(lsFn, dirKeychain)
 
-    secureKeyContent = keyObj.toSecureString(username, passwd, encryptedKeyName)
+    secureKeyContent = dirKeychain.toSecureString(username, passwd, encryptedDirKeychainFn)
 
     #keyfile
-    self.HttpClient.sendCreateRequest(encryptedDirKeychainFn,
+    HttpClient.sendCreateRequest(encryptedDirKeychainFn,
                                     True,
                                     False,
                                     secureKeyContent)
 
     #lsfile
-    secureFileContent = cryptClient.encryptFile("", keyObj)
-    self.HttpClient.sendCreateRequest(encrypted_lsFn,
+    secureFileContent = cryptClient.encryptFile("", dirKeychain)
+    HttpClient.sendCreateRequest(encrypted_lsFn,
                                     True,
                                     False,
                                     secureFileContent)
 
     #directory
-    self.HttpClient.sendCreateRequest(encryptedDn,
+    HttpClient.sendCreateRequest(encryptedDn,
                                     False,
                                     True)
     
