@@ -77,11 +77,6 @@ class DCKey:
     def dcVerify(self, dcSignature):
         l = ""
         i = 0
-        # for i in range(0, len(dcSignature)):
-        #     c = dcSignature[i]
-        #     if c == ",":
-        #         break
-        #     l += c
         while i < len(dcSignature):
             c = dcSignature[i]
             if c == ",":
@@ -93,8 +88,7 @@ class DCKey:
         rsaSignature = dcSignature[index_signature:]
         signature_to_verify = (long(rsaSignature), ) #tuple for rsa pycrypto should have (rsa_signature, )
         hash_val = hashlib.sha256(plaintext).digest()
-        public_key = self.rsaKeyObj.publickey()
-        if public_key.verify(hash_val, signature_to_verify):
+        if self.rsaVerifyKeyObj.verify(hash_val, signature_to_verify):
             return plaintext
         else:
             raise ValueError("Verification failed")
@@ -111,6 +105,7 @@ class DCTableKey(DCKey):
         saltIv = hashlib.sha256(str(pathToKeyFilename)).digest()
         self.iv = makeIV(self.keyAES, saltIv)
         self.rsaKeyObj = makeRSAKeyObj(password, salt)
+        self.rsaVerifyKeyObj = self.rsaKeyObj.publickey()
 
     def __eq__(self, otherKey):
         if not isinstance(otherKey, DCTableKey):
@@ -126,12 +121,19 @@ class DCTableKey(DCKey):
 #Class for holding the keys that locks (encrypts/signs) the actual content of the user's data.
 #This class can be made into a secure key file table by running toSecureString.
 class DCFileKey(DCKey):
-    def __init__(self, iv, keyAES, rsaRandNum):
+    def __init__(self, iv, keyAES, rsaRandNum = None, publickey = None):
         self.keyAES = keyAES
         self.iv = iv
         self.rsaRandNum = rsaRandNum
         salt = hashlib.sha256(iv).digest()
-        self.rsaKeyObj = makeRSAKeyObj(rsaRandNum, salt)
+        #self.rsaKeyObj
+        if (rsaRandNum == None):
+            #this means errors will be thrown if the user tries to write
+            self.rsaVerifyKeyObj = publickey
+            self.rsaKeyObj =  "" #its more explicit this way
+        else:
+            self.rsaKeyObj = makeRSAKeyObj(rsaRandNum, salt)
+            self.rsaVerifyKeyObj = self.rsaKeyObj.publickey()
 
     #Generates a string representing the the keys of for locking a file ina secure (encrypted/signed) format.
     def toSecureString(self, username, password, pathToKeyFilename):
@@ -139,8 +141,12 @@ class DCFileKey(DCKey):
         ivLen = len(self.iv)
         keyAESLen = len(self.keyAES)
         rsaRandNumLen = len(self.rsaRandNum)
+        rsaVerifyKeyStr = self.rsaVerifyKeyObj.exportKey('PEM')
+        rsaVerifyKeyLen = len(self.rsaVerifyKeyObj.exportKey('PEM'))
+
         #generate plain text file data
-        keyFileData = str(ivLen)+","+str(keyAESLen)+","+str(rsaRandNumLen)+","+self.iv+self.keyAES+self.rsaRandNum
+        keyFileData = str(ivLen)+","+str(keyAESLen)+","+str(rsaRandNumLen)+","+str(rsaVerifyKeyLen)+","
+        keyFileData += self.iv+self.keyAES+self.rsaRandNum+rsaVerifyKeyStr
         #generate secure file
         tableKey = DCTableKey(username, password, pathToKeyFilename)
         secureKeyTableFileData = tableKey.lock(keyFileData)
@@ -161,6 +167,11 @@ class DCFileKey(DCKey):
     def __ne__(self, otherKey):
         return not self.__eq__(otherKey)
 
+    def shareReadkeys(self):
+        readAESKey = self.keyAES
+        iv = self.iv
+        verifyKey = self.rsaVerifyKeyObj.exportKey('PEM')
+        return (verifyKey, readAESKey, iv)
 
 
 
@@ -213,18 +224,26 @@ class DCCryptoClient:
                 keysLengths.append(currentKeyLength)
                 currentKeyLength = ""
                 commas += 1
-                if(commas == 3):
+                if(commas == 4):
                     break
         ivLen = int(keysLengths[0])
         keyAESLen = int(keysLengths[1])
         rsaKeyObjLen = int(keysLengths[2])
+        rsaKeyVerifyLen = int(keysLengths[3])
         startKeyAES = i+1+ivLen
         startRSAnum = startKeyAES+keyAESLen
+        startRSverify = startRSAnum + rsaKeyObjLen
 
         iv = keyFileData[i+1:startKeyAES]
         keyAES = keyFileData[startKeyAES:startRSAnum]
-        rsaRandNum = keyFileData[startRSAnum:]
-        keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
+        rsaRandNum = keyFileData[startRSAnum:startRSverify]
+        rsaVerifyKeyStr = keyFileData[startRSverify:]
+
+        if(rsaKeyObjLen == 0):
+            #means its read permission
+            DCFileKey(iv, keyAES, rsaRandNum, rsaRandNum = None, publickey = rsaVerifyKeyStr)
+        else:
+            keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
         return keyFileObj
 
 
