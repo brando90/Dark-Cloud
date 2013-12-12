@@ -135,6 +135,15 @@ decryptedData2 = dcCryptoClient.decryptFile(secureData, readKeyFromStr)
 
 print "reading from secure file worked: ", decryptedData2 == plaintext
 
+##==
+plaintext = "brando123"
+dcCryptoClient = dcCryptoLib.DCCryptoClient()
+keyFileObj = dcCryptoClient.createKeyFileObj()
+name1 = dcCryptoClient.encryptName( "name", keyFileObj)
+name2 = dcCryptoClient.encryptName( "name", keyFileObj)
+
+print name1 == name2
+
 
 
 
