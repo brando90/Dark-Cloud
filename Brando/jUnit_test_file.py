@@ -88,7 +88,10 @@ decryptedData = dcCryptoClient.decryptFile(secureData, keyMadeFromSecureString)
 print "decrypting a secure file works: ", decryptedData == plaintext
 print "do secure files match made by keys: ",keyF1.toSecureString('password', 'username', 'keyFilename') == keyMadeFromSecureString.toSecureString('password', 'username', 'keyFilename')
 
-
-
+emptyStr = "Marcel likes dick"
+secureData = tableKey.lock(emptyStr)
+print secureData
+decryptedData = tableKey.unlock(secureData)
+print "locking/unlocking a empty string works: ", decryptedData == emptyStr
 
 

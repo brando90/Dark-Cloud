@@ -7,10 +7,12 @@ from Crypto.Protocol.KDF import PBKDF2
 import pbkdf2
 import hashlib
 
+#Abstract class for a DCKey
 class DCKey:
     def __init__(self):
         pass
 
+    #prints the string for debugging purposes
     def __str__(self):
         s="----DCKey print----\n"
         s+="----\n"
@@ -22,16 +24,22 @@ class DCKey:
         s+="----\n"
         return s
 
+    #makes a secure file. 
+    #In latex notation, a secure file looks as follows: 
+    #E_{K_{AES-CBC}}[\text{plaintext} , \ Sign_{RSA} [Hash[\text{plaintext}] ] 
     def unlock(self, secureData):
         dcSignature = self.dcDecrypt(secureData)
         plaintext = self.dcVerify(dcSignature)
         return plaintext
 
+    #returns the plaintext of a secure file (other it throws an error if validation does not work).  
     def lock(self, plaintext):
         dcSignature = self.dcSign(plaintext)
         secureData = self.dcEncript(dcSignature)
         return secureData
 
+    #This function should probably not be used directly.
+    #It encrypts a file in a dc encryption format (needs padding for pycrypto to work)
     def dcEncript(self, dcSignature):
         remainder = len(dcSignature) % 16
         amountPadding = 16 - remainder
@@ -43,6 +51,8 @@ class DCKey:
         dcEncryptedData = encryptor.encrypt(data)
         return dcEncryptedData
 
+    #This function should probably not be used directly.
+    #It dencrypts a file in the dc encryption format.
     def dcDecrypt(self, secureData):
         decryptor = AES.new(self.keyAES, AES.MODE_CBC, self.iv)
         dcSignature = decryptor.decrypt(secureData)
@@ -52,6 +62,8 @@ class DCKey:
                 break
         return dcSignature[i+1:]
 
+    #This function should probably not be used directly.
+    #It signs in a dc format way.
     def dcSign(self, plaintext):
         hashVal = hashlib.sha256(plaintext).digest()
         (rsaSignature, ) = self.rsaKeyObj.sign(hashVal, '')
@@ -59,6 +71,9 @@ class DCKey:
         dcSignature = str(len(plaintext))+ ","+ plaintext + rsaSignature
         return dcSignature
 
+    #This function should probably not be used directly.
+    #It verifies in a dc format way.
+    #If verification failed, then it throws an error
     def dcVerify(self, dcSignature):
         l = ""
         i = 0
@@ -84,6 +99,9 @@ class DCKey:
         else:
             raise ValueError("Verification failed")
 
+#Class for holding the keys that locks (encrypt/signs) the key file table.
+#Recall the key file table is the file that actually has the keys for locking (encrpting/signing) 
+#a user's data content. This class just locks that (key file table).
 class DCTableKey(DCKey):
     def __init__(self, username, password, pathToKeyFilename):
         #when making keys from password for a specific keyFilename
@@ -104,7 +122,8 @@ class DCTableKey(DCKey):
     def __ne__(self, otherKey):
         return not self.__eq__(otherKey)
 
-
+#Class for holding the keys that locks (encrypts/signs) the actual content of the user's data.
+#This class can be made into a secure key file table by running toSecureString.
 class DCFileKey(DCKey):
     def __init__(self, iv, keyAES, rsaRandNum):
         self.keyAES = keyAES
@@ -113,6 +132,7 @@ class DCFileKey(DCKey):
         salt = hashlib.sha256(iv).digest()
         self.rsaKeyObj = makeRSAKeyObj(rsaRandNum, salt)
 
+    #Generates a string representing the the keys of for locking a file ina secure (encrypted/signed) format.
     def toSecureString(self, username, password, pathToKeyFilename):
         #generate keys
         ivLen = len(self.iv)
