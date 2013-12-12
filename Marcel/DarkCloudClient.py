@@ -187,12 +187,12 @@ class DCClient:
 
         return "Created directory: ", name
 
-    def read(encryptedName):
+    def read(self, encryptedName):
         encryptedPath = self.wd.encrypted_pwd()
         content = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedName)
         return content
 
-    def readFile(name):
+    def readFile(self,name):
         print "readFile"
         fn = name
         kcFn = keychainFn(fn, self.username)
@@ -262,7 +262,7 @@ class DCClient:
 
     #     return dirObj
     
-    def readDir(name):
+    def readDir(self, name):
         print "readDir"
         dn = name
         kcFn = keychainFn(dn, self.username)
@@ -297,13 +297,13 @@ class DCClient:
         plaintextEntryNames = DCDir.verifyWith_lsFile(encryptedDirEntries, lsFile)
         return plaintextEntryNames
 
-    def ls():
+    def ls(self):
         name = self.wd.up(1)
         entries = readDir(name)
         self.wd.down(name)
         return entries
 
-    def write(name, content, isLS=False):
+    def write(self, name, content, isLS=False):
         print "write"
         fn = name
         kcFn = keychainFn(fn, self.username)
@@ -337,7 +337,7 @@ class DCClient:
 
         return name + " written"
 
-    def deleteFile(fn):
+    def deleteFile(self, fn):
         print "deleteFile"
         kcFn = keychainFn(fn, self.username)
         path = self.wd.pwd()
@@ -391,7 +391,7 @@ class DCClient:
         return
 
     # rmdir => dirs only
-    def rmdir(args):
+    def rmdir(self, args):
         print "rmdir"
         dn = args[0]
         kcFn = keychainFn(dn, self.username)
@@ -453,7 +453,7 @@ class DCClient:
 
         return
 
-    def rename(name, newName, isDir=False):
+    def rename(self, name, newName, isDir=False):
         print "rename"
         kcFn = keychainFn(name, self.username)
         newKcFn = keychainFn(newName, self.username)
