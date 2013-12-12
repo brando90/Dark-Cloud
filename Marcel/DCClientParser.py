@@ -2,6 +2,8 @@ import os
 import getpass
 import DarkCloudClient
 import subprocess
+import shlex
+import sys
 
 prompt = "DarkCloud >>> "
 
@@ -10,20 +12,38 @@ class CommandError(Exception):
 
 class DCClientParser:
     """docstring for DarkCloudClientParser"""
-    def __init__(self, arg):
-        self.arg = arg
+    def __init__(self):
         self.loggedIn = False
         self.dcClient = None
         self.username = None
         self.passwd = None
+        self.commands = {
+            'create': self.create,
+            'touch': self.create,
+            'delete': self.delete,
+            'rm': self.delete,
+            'read': self.read,
+            'write': self.write,
+            'rename': self.rename,
+            'login': self.login,
+            'logout': self.logout,
+            'mkdir': self.mkdir,
+            'rmdir': self.rmdir,
+            'ls': self.ls,
+            'exit': self.exit_shell,
+            'help': self.show_help,
+            'cd': self.cd,
+            'vim': self.vim,
+            'readFiles': self.showReadFiles #maybe
+        }
         
-    def create(args):
-        if len(args) == 1:
-            name = args[0] #input sanitization
+    def create(self, args):
+        if len(args) == 2:
+            name = args[1] #input sanitization
             content = ""
-        elif len(args) == 2:
-            name = args[0]
-            content = args[1]
+        elif len(args) == 3:
+            name = args[1]
+            content = args[2]
         else:
             print "Incorrect number of arguments\nUsage: create name [content]"
             return
@@ -33,21 +53,21 @@ class DCClientParser:
 
         print "Created file: ", name
 
-    def delete(args):
-        if len(args) == 1:
+    def delete(self, args):
+        if len(args) != 2:
             print "Incorrect number of arguments\nUsage: delete name"
             return
-        name = args[0]
+        name = args[1]
 
         #self.dcClient.delete(name)
         print "delete ", name
         print "Deleted file: ", name
 
-    def read(args):
-        if len(args) != 1:
+    def read(self, args):
+        if len(args) != 2:
             print "Incorrect number of arguments\nUsage: read name"
             return
-        name = args[0]
+        name = args[1]
 
         print "Reading file: " + name + " ..."
         #content = self.dcClient.read(name)
@@ -55,78 +75,78 @@ class DCClientParser:
         with open('tmp/' + name, 'w') as fd:
             return fd.write(content)
 
-    def write(args):
-        if len(args) != 1:
+    def write(self, args):
+        if len(args) != 2:
             print "Incorrect number of arguments\nUsage: write filename"
             return
-        name = args[0]
+        name = args[1]
         with open('tmp/' + name, 'r') as fd:
             content = fd.read()
             #self.dcClient.write(name, content)
             print "write name -> ", content
 
-    def rename(args):
-        if len(args) != 2:
+    def rename(self, args):
+        if len(args) != 3:
             print "Incorrect number of arguments\nUsage: read filename"
             return
-        name = args[0]
-        newName = args[1]
+        name = args[1]
+        newName = args[2]
         #self.dcClient.rename(name, newName)
         print "rename", name, newName
 
-    def mkdir(args):
-        if len(args) != 1:
+    def mkdir(self, args):
+        if len(args) != 2:
             print "Incorrect number of arguments\nUsage: read filename"
             return
-        name = args[0]
+        name = args[1]
         #self.dcClient.mkdir(name)
         print "mkdir", name
 
-    def rmdir(args):
-        if len(args) != 1:
+    def rmdir(self, args):
+        if len(args) != 2:
             print "Incorrect number of arguments\nUsage: read filename"
             return
-        name = args[0]
+        name = args[1]
         #self.dcClient.rmdir(name)
         print "rmdir", name
 
-    def ls():
+    def ls(self, args):
         pass
 
-    def cd(args):
-        if len(args) != 1:
+    def cd(self, args):
+        if len(args) != 2:
             print "Incorrect number of arguments\nUsage: read filename"
             return
-        name = args[0]
+        name = args[1]
         if name == '..':
             self.dcClient.wd.up(1)
         else:
             self.dcClient.wd.down(name)
 
-    def vim(args):
-        if len(args) != 1:
+    def vim(self, args):
+        if len(args) != 2:
             print "Incorrect number of arguments\nUsage: read filename"
             return
-        name = args[0]
+        name = args[1]
         print "Openning vim"
         subprocess.call('vim tmp/' + name, shell=True)
         print "Completed"
 
-    def showReadFiles():
-        os.listdir('tmp')
+    def showReadFiles(self, args):
+        print os.listdir('tmp')
 
-    def login():
+    def login(self, args):
         self.username = raw_input('Username: ')
         self.passwd = getpass.getpass()
 
         #sanitize input?
 
-        self.dcClient = DCClient(self.username, self.passwd)
+        #self.dcClient = DCClient(self.username, self.passwd)
         self.loggedIn = True
         prompt = "DarkCloud:" + self.username + " >>> "
 
-    def logout(args):
-        if len(args) != 0:
+    def logout(self, args):
+        if len(args) != 1:
             raise CommandError("Usage: logout")
 
         self.username = None
@@ -134,47 +154,25 @@ class DCClientParser:
         self.dcClient = None
         prompt = "DarkCloud >>> "
 
-    def exit_shell(args):
-        if len(args) != 0:
+    def exit_shell(self, args):
+        if len(args) != 1:
             print "Not a valid command, make sure exit has not arguments"
         if raw_input('Warning: unwritten files in local directory will be deleted! Do you wish to continue? [y/N]') == 'y':
             sys.exit(0)
 
 
-    def show_help(args):
+    def show_help(self, args):
         print "Available commands:"
-        for cmd in commands:
+        for cmd in self.commands:
             print "- " + cmd
 
-
-    commands = {
-        'create': self.create,
-        'touch': self.create,
-        'delete': self.delete,
-        'rm': self.delete,
-        'read': self.read,
-        'write': self.write,
-        'rename': self.rename,
-        'login': self.login,
-        'logout':self.logout,
-        'mkdir': self.mkdir,
-        'rmdir': self.rmdir,
-        'ls': self.ls,
-        'logout': self.logout,
-        'exit': self.exit_shell,
-        'help': self.show_help,
-        'cd': self.cd,
-        'vim': self.vim,
-        'readFiles': self.showReadFiles #maybe
-    }
-
-    def run_command(cmd, args):
+    def run_command(self, cmd, args):
         print "Running %s with args %s" % (cmd, args, )
-        if cmd in commands:
+        if cmd in self.commands:
             if not self.loggedIn and cmd != 'login':
                 print "Please login before executing commands."
             try:
-                commands[cmd](args)
+                self.commands[cmd](args)
             except CommandError, e:
                 print e.message
         else:
@@ -183,15 +181,16 @@ class DCClientParser:
 # *** Run Dark Cloud Client ***
 
 def run():
-    client = DarkCloudClientParser()
-    os.mkdir('tmp')
+    client = DCClientParser()
+    if not os.path.exists("tmp"):
+        os.mkdir('tmp')
     try:
         while True:
             cmd_str = raw_input(prompt)
             args = shlex.split(cmd_str)
             if not args: continue
             cmd = args[0]
-            client.run_command(cmd, args[1:])
+            client.run_command(cmd, args)
     except EOFError:
         print "\nEnded Session"
     subprocess.call('touch foo', shell=True)
