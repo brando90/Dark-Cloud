@@ -36,7 +36,8 @@ class DCHTTPClient():
 	# Create --> PUT
 	def sendCreateRequest(self, encryptedPath, isFile=False, isDir=False, encryptedContents=None):
 		url = encryptedPath + '?' + urlencode({Method:Create, File:isFile, Dir:isDir})
-		self.connection.request(PUT, url, encryptedContents)
+		headers = {'content-length':len(encryptedContents)}
+		self.connection.request(PUT, url, encryptedContents, headers)
 		return self.connection.getresponse().read()
 
 	# Read --> GET
@@ -55,13 +56,15 @@ class DCHTTPClient():
 	# Write --> POST
 	def sendWriteRequest(self, encryptedPath, newEncryptedContents):
 		url = encryptedPath + '?' + urlencode({Method:Write})
-		self.connection.request(POST, url, newEncryptedContents)
+		headers = {'content-length':len(encryptedContents)}
+		self.connection.request(POST, url, newEncryptedContents, headers)
 		return self.connection.getresponse().read()
 
 	# Rename --> POST
 	def sendRenameRequest(self, encryptedPath, newEncryptedPath):
 		url = encryptedPath + '?' + urlencode({Method:Rename})
-		self.connection.request(POST, url, newEncryptedPath)
+		headers = {'content-length':len(encryptedContents)}
+		self.connection.request(POST, url, newEncryptedPath, headers)
 		return self.connection.getresponse().read()
 
 	# Delete --> DELETE
