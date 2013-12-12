@@ -5,16 +5,12 @@ import sys
 import DCCryptoClient
 import os
 
-
-class CommandError(Exception):
-    pass
-
 class DCClient:
-    def __init__(username, passwd):
+    def __init__(self, username, passwd):
         self.username = None
         self.passwd = None
         self.wd = DCWorkingDirectory(self.username, self.passwd)
-        self.HttpClient = DCHTTPClient(127.0.0.1, 8080)
+        self.HttpClient = DCHTTPClient("127.0.0.1", 8080)
 
     def tableFilename(self, name):
         return '.t-' + name
@@ -22,8 +18,7 @@ class DCClient:
     def lsFilename(self, name):
         return '.ls-' + name
 
-    def createFile(self, args):
-        name = args[0]
+    def createFile(self, name, content):
         kfname = tableFilename(name)
         path = self.wd.toString()
         mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
@@ -57,7 +52,7 @@ class DCClient:
         #request to create regular file on server
 
         #need to encrypt empty string?
-        secureFileContent = DCCryptoClient.encryptFile("", keyObj)
+        secureFileContent = DCCryptoClient.encryptFile(content, keyObj)
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedName,
                                         True,
                                         False,
@@ -227,8 +222,7 @@ class DCClient:
 
         return name + " written"
 
-    def delete(args):
-        name = args[0]
+    def delete(name):
         kfname = tableFilename(name)
         path = self.wd.toString()
         mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
@@ -378,59 +372,6 @@ class DCClient:
             self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName,
                                             encryptedPath + '/' + newEncryptedLSFileName)
 
-    def login(args):
-        if len(args) != 2:
-            raise CommandError("Usage: login username passwd")
-
-        if self.username:
-            raise CommandError("Already logged in.")
-
-        self.HttpClient
-        self.username = args[0]
-        self.passwd = args[1]
-
-    def logout(args):
-        if len(args) != 0:
-            raise CommandError("Usage: logout")
-
-        if not self.username:
-            raise CommandError("Not logged in.")
-        self.username = None
-        self.passwd = None
-
-    def exit_shell(args):
-        if len(args) != 0:
-            print "Not a valid command, make sure exit has not arguments"
-        sys.exit(0)
-
-
-    def show_help(args):
-        print "Available commands:"
-        for cmd in commands:
-            print "- " + cmd
-
-
-    commands = {
-        'create': self.createFile,
-        'delete': self.delete,
-        'read': self.read,
-        'write': self.write,
-        'rename': self.rename,
-        'login': self.login,
-        'mkdir': self.mkdir,
-        'logout': self.logout,
-    }
-
-    def run_command(cmd, args):
-        print "Running %s with args %s" % (cmd, args, )
-        if cmd in commands:
-            try:
-                commands[cmd](args)
-            except CommandError, e:
-                print e.message
-        else:
-            print "%s: command not found" % (cmd, )
-
 # -------------------------------
 
 
@@ -498,7 +439,7 @@ class DCSecureDir:
         pass
 
     def getLS():
-
+        pass
 # -----------------------------
 
 
