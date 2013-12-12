@@ -167,13 +167,11 @@ class DCFileKey(DCKey):
     def __ne__(self, otherKey):
         return not self.__eq__(otherKey)
 
-    def shareReadkeys(self):
-        readAESKey = self.keyAES
+    def getReadkeys(self):
+        keyAES = self.keyAES
         iv = self.iv
         verifyKey = self.rsaVerifyKeyObj.exportKey('PEM')
-        return (verifyKey, readAESKey, iv)
-
-
+        return (iv, keyAES, verifyKey)
 
 class DCCryptoClient:
     def __init__(self):
@@ -240,11 +238,16 @@ class DCCryptoClient:
         rsaVerifyKeyStr = keyFileData[startRSverify:]
 
         if(rsaKeyObjLen == 0):
-            #means its read permission
+            #means its a read permission
             DCFileKey(iv, keyAES, rsaRandNum, rsaRandNum = None, publickey = rsaVerifyKeyStr)
         else:
             keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
         return keyFileObj
+
+    def shareKeyFileAsRead(self, keyObjToShare):
+        (iv, keyAES, verifyKey) = keyObjToShare.getReadkeys()
+        return DCFileKey(iv, keyAES, rsaRandNum = None, publickey = verifyKey)
+
 
 
 def encryptAES(keyAES, iv, plaintext, mode = AES.MODE_CBC):
