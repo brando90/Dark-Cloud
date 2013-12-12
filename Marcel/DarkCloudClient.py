@@ -28,7 +28,6 @@ def nameTo_lsFn(dirname):
 
 def register(username, passwd):
     print "registering username: %s, with password: %s" % (username, passwd)
-    HttpClient = DCHTTPClient('127.0.0.1', 8080)
     dn = username
     kcFn = keychainFn(dn, username)
     lsFn = nameTo_lsFn(dn)
@@ -45,7 +44,7 @@ def register(username, passwd):
     print "eDKcFn: " + urllib.quote(encryptedDirKeychainFn)
 
     #keyfile
-    HttpClient.sendCreateRequest(encryptedDirKeychainFn,
+    GDCHTTPClient.sendCreateRequest(encryptedDirKeychainFn,
                                     True,
                                     False,
                                     secureKeychainContent)
@@ -54,7 +53,7 @@ def register(username, passwd):
 
     #lsfile
     secure_lsFileContent = dirKeychain.lock("")
-    HttpClient.sendCreateRequest(encrypted_lsFn,
+    GDCHTTPClient.sendCreateRequest(encrypted_lsFn,
                                     True,
                                     False,
                                     secure_lsFileContent)
@@ -63,7 +62,7 @@ def register(username, passwd):
 
     #directory
     print 
-    HttpClient.sendCreateRequest(encryptedDn,
+    GDCHTTPClient.sendCreateRequest(encryptedDn,
                                     False,
                                     True)
     

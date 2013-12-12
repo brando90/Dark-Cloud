@@ -33,8 +33,8 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	# Create
 	def do_PUT(self):
 		encryptedPath = self.tmpPath(self.getURL())
-		method = self.getMethod()
 		encryptedContents = self.getEncryptedBody()
+		method = self.getMethod()
 		isFile = self.toBoolean(self.newFile())
 		isDir = self.toBoolean(self.newDir())
 
@@ -126,11 +126,14 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	# 	return self.path
 
 	def getQueryArg(self, key):
-		print "Sevrers-side qs: "+self.getQueryString()
+		print "Server-side qs: "+self.getQueryString()
 		#print key + " : " + repr(parse_qs(self.getQueryString()).get(key)[0])
 		parsedQs = parse_qs(self.getQueryString())
+		print "parsedQs: " + repr(parsedQs)
 		keyResults = parsedQs.get(key)
+		print "keyResults: " + repr(keyResults)
 		firstResult = keyResults[0]
+		print "firstResult: " + repr(firstResult)
 		return firstResult
 
 	def getMethod(self):
@@ -143,12 +146,13 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		return self.getQueryArg(Dir)
 
 	def getEncryptedBody(self):
-		encryptedContentLength = int(self.headers.getheader('Content-Length'))
+		encryptedContentLength = int(self.headers.getheader('content-length'))
+		print "content-length: " + str(encryptedContentLength)
 		return self.rfile.read(encryptedContentLength)
 
 	def getQueryString(self):
 		print "server side headers: "+repr(self.headers)
-		qs = self.headers.getheader('query')
+		qs = self.headers.getheader('query-string')
 		#print "server side qs firsthand: " + repr(qs)
 		if qs != None:
 			print "qs is something!"
