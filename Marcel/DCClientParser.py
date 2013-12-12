@@ -153,7 +153,11 @@ class DCClientParser:
         print "rmdir", name
 
     def ls(self, args):
-        pass
+        if len(args) != 1:
+            print "Incorrect number of arguments"
+            return
+
+        print self.dcClient.ls()
 
     def cd(self, args):
         if len(args) != 2:

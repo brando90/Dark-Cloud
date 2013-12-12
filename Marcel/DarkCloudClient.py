@@ -295,6 +295,12 @@ class DCClient:
         plaintextEntryNames = DCDir.verifyWith_lsFile(encryptedDirEntries, lsFile)
         return plaintextEntryNames
 
+    def ls():
+        name = self.wd.up(1)
+        entries = readDir(name)
+        self.wd.down(name)
+        return entries
+
     def write(name, content, isLS=False):
         print "write"
         fn = name
