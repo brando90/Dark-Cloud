@@ -566,7 +566,7 @@ class DCWorkingDirectory:
         self.switchRoot(username)
 
     def up(self,steps=1):
-        newWD = None
+        newWD = ''
         for i in xrange(0, steps):
             if len(self.directoryStack) > 0:
                 newWD = self.directoryStack.pop()
