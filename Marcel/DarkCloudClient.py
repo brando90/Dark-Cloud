@@ -5,14 +5,13 @@ import sys
 import DCCryptoClient
 import os
 
-def keychainFn(self, name):
-    #TODO: should be dependent on username (sharing)
-    return '.kc-' + name
+def keychainFn(self, name, username):
+    return '.kc-' + username + '-' + name
 
 def createAccount(username, passwd):
     HttpClient = DCHTTPClient('127.0.0.1', 8080)
     dn = username
-    kcFn = keychainFn(dn)
+    kcFn = keychainFn(dn, username)
     lsFn = lsFn(dn)
 
     userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, kcFn)
@@ -52,7 +51,7 @@ class DCClient:
         self.HttpClient = DCHTTPClient('127.0.0.1', 8080)
 
     def createFile(self, fn, content):
-        kcFn = keychainFn(fn)
+        kcFn = keychainFn(fn, self.username)
         path = self.wd.pwd()
         userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
@@ -109,7 +108,7 @@ class DCClient:
 
     def mkdir(self, args):
         dn = args[0]
-        kcFn = keychainFn(dn)
+        kcFn = keychainFn(dn, self.username)
         lsFn = lsFn(name)
         path = self.wd.toString()
 
@@ -279,7 +278,7 @@ class DCClient:
         return name + " written"
 
     def deleteFile(fn):
-        kcFn = keychainFn(fn)
+        kcFn = keychainFn(fn, self.username)
         path = self.wd.pwd()
         userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
@@ -300,7 +299,7 @@ class DCClient:
         parentDn = self.wd.up(1)
         parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.password, parentDn, self.wd.encrypted_pwd(), self.HttpClient)
         # Initialize dcdir with: parentDn, pwd, encrypted_pwd, parentDirKeychain
-        dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), parentDirKeychain)#TODO: pass in args for verified dirKeychain
+        dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), parentDirKeychain)
         # 
         dcdir.unregisterDir(encryptedFn, encryptedFileKeychainFn, self.HttpClient)
         self.wd.down(parentDn)
@@ -332,7 +331,7 @@ class DCClient:
     # rmdir => dirs only
     def rmdir(args):
         dn = args[0]
-        kcFn = keychainFn(dn)
+        kcFn = keychainFn(dn, self.username)
         lsFn = lsFn(name)
         path = self.wd.toString()
         userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
@@ -393,8 +392,8 @@ class DCClient:
     def rename(args, isDir=False):
         name = args[0]
         newName = args[1]
-        kcFn = keychainFn(name)
-        newKcFn = keychainFn(newName)
+        kcFn = keychainFn(name, self.username)
+        newKcFn = keychainFn(newName, self.username)
         lsFn = lsFilename(name)
         new_lsFn = lsFilename(lsname)
         path = self.wd.pwd()
@@ -521,8 +520,7 @@ class DCWorkingDirectory:
             # see if we can get the encrypted name without querying the server
             dirKey = dcCryptoClient.getKey(path)
             if not dirKey:
-                #TODO: make this error more legit
-               raise ValueError('Manually cd into subdirectories')
+               raise ValueError("cd'ing through multiple directories at once is not yet implemented. Must manually cd through them.")
 
             # encrypt dirname with key            
             encryptedDirname = dcCryptoClient.encryptName(dirname, dirKey)
@@ -540,7 +538,6 @@ class DCDir:
 
     @staticmethod
     def lsFn(dirname):
-        #TODO: make this more legit
         return '.ls-' + dirname
 
     @staticmethod
@@ -636,7 +633,7 @@ class DCDir:
     def verifiedDirKeychain(username, password, dn, encryptedDirpath, httpClient):
         userKeychain = dcCryptoClient.createUserMasterKeyObj(username, password, encrypted_pwd)
         # Get encrypted dirKeychainFn name
-        encryptedDirKeychainFn = dcCryptoClient.encryptName(keychainFn(dn), userKeychain)
+        encryptedDirKeychainFn = dcCryptoClient.encryptName(keychainFn(dn, username), userKeychain)
         # Query server for secure dirKeychain
         secureDirKeychain = httpClient.sendReadRequest(encrypted_pwd)
         # Unlock dirKeychain and return it
