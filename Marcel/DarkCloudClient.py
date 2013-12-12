@@ -29,7 +29,7 @@ class DCClient:
         # Initialize dcdir with: parentDn, pwd, encrypted_pwd, fileKeychain
         dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), DCDir.verifiedDirKeychain())#TODO: pass in args for verified dirKeychain
         # plaintextFn, encryptedFn, plaintextFileKeychainFn, encryptedFileKeychainFn, httpClient
-        dcdir.registerFile(fn, encryptedFn, kcFn, encryptedFileKeychainFn, self.HttpClient)
+        dcdir.registerFile(encryptedFn, fn, encryptedFileKeychainFn, kcFn, self.HttpClient)
         self.wd.down(parentDn)
 
         # # *** BEGIN: Replaced with DCDir implementation above ***
@@ -88,7 +88,7 @@ class DCClient:
         # Initialize dcdir with: parentDn, pwd, encrypted_pwd, dirKeychain
         dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), DCDir.verifiedDirKeychain())#TODO: pass in args for verified dirKeychain
         # plaintextDn, encryptedDn, plaintext_lsFn, encrypted_lsFn, plaintextFileKeychainFn, encryptedFileKeychainFn, httpClient
-        dcdir.registerDir(dn, encryptedDn, lsFn, encrypted_lsFn, kcFn, encryptedDirKeychainFn, self.HttpClient)
+        dcdir.registerDir(encryptedDn, dn, encrypted_lsFn, lsFn, encryptedDirKeychainFn, kcFn, self.HttpClient)
         self.wd.down(parentDn)
 
         # # *** BEGIN: Replaced with DCDir implementation above ***
@@ -264,7 +264,7 @@ class DCClient:
         # Initialize dcdir with: parentDn, pwd, encrypted_pwd, fileKeychain
         dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), DCDir.verifiedDirKeychain())#TODO: pass in args for verified dirKeychain
         # 
-        dcdir.unregisterDir(fn, encryptedFn, kcFn, encryptedFileKeychainFn, self.HttpClient)
+        dcdir.unregisterDir(encryptedFn, encryptedFileKeychainFn, self.HttpClient)
         self.wd.down(parentDn)
 
         # # *** BEGIN: Replaced with DCDir implementation above ***
@@ -318,7 +318,7 @@ class DCClient:
         # Initialize dcdir with: parentDn, pwd, encrypted_pwd, dirKeychain
         dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), DCDir.verifiedDirKeychain())#TODO: pass in args for verified dirKeychain
         # plaintextDn, encryptedDn, plaintext_lsFn, encrypted_lsFn, plaintextDirKeychainFn, encryptedDirKeychainFn, httpClient
-        dcdir.unregisterDir(dn, encryptedDn, lsFn, encrypted_lsFn, kcFn, encryptedDirKeychainFn, self.HttpClient)
+        dcdir.unregisterDir(encryptedDn, encrypted_lsFn, encryptedDirKeychainFn, self.HttpClient)
         self.wd.down(parentDn)
 
         # # *** BEGIN: Replaced with DCDir implementation above ***
@@ -482,39 +482,57 @@ class DCDir:
 
     @staticmethod
     def addFile_lsEntry(lsFile, plaintextFn, encryptedFn):
-        #TODO: implement this
+        # Entry looks as follows: 
+        #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
         ptFnLength = len(plaintextFn)
         encFnLength = len(encryptedFn)
-        lengthlessEntry = 'fn,' + str(ptFnLength) + ',' + str(encFnLength) + ',' + plaintextFn + encryptedFn
+        lengthlessEntry = 'fn,' + str(ptFnLength) + ',' + str(encFnLength) + ',' + plaintextFn + ',' + encryptedFn + ';'
         entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
-        entry = entryLength + ',' + lengthlessEntry)
-        return lsFile.append(entry)
+        entry = str(entryLength) + ',' + lengthlessEntry
+        return lsFile + entry
 
     @staticmethod
-    #TODO: Don't need both ptFn & encFn
-    def removeFile_lsEntry(lsFile, plaintextFn, encryptedFn):
-        #TODO: implement this
-        pass
+    def removeFile_lsEntry(lsFile, encryptedFn):
+        offset = 0
+        updated_lsFile = None
+        while offset < len(lsFile):
+            entry, newOffset = DCDir.readEntry(lsFile, offset)
+            if entry.isFile and (entry.encryptedName == encryptedFn):
+                #remove entry
+                updated_lsFile = lsFile[:offset] + lsFile[newOffset:]
+        return updated_lsFile
 
-    @staticmethod
-    def addDir_lsEntry(lsFile, plaintextDn, encryptedDn):
-        ptDnLength = len(plaintextDn)
-        encDnLength = len(encryptedDn)
-        entry = 'dn,' + ptDnLength + ',' + encDnLength + ',' + plaintextDn + encryptedDn
-        lengthlessEntry = len(lengthlessEntry)
-        entry = entryLength + ',' + lengthlessEntry)
-        return lsFile.append(entry)
         
 
     @staticmethod
-    def removeDir_lsEntry(lsFile, plaintextDn, encryptedDn):
-        pass
+    def addDir_lsEntry(lsFile, plaintextDn, encryptedDn):
+        # Entry looks as follows: 
+        #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
+        ptDnLength = len(plaintextDn)
+        encDnLength = len(encryptedDn)
+        entry = 'dn,' + ptDnLength + ',' + encDnLength + ',' + plaintextDn + ',' + encryptedDn + ';'
+        lengthlessEntry = len(lengthlessEntry)
+        entry = entryLength + ',' + lengthlessEntry
+        return lsFile + entry
+        
+
+    @staticmethod
+    def removeDir_lsEntry(lsFile, encryptedDn):
+        offset = 0
+        updated_lsFile = None
+        while offset < len(lsFile):
+            entry, newOffset = DCDir.readEntry(lsFile, offset)
+            if entry.isDir and (entry.encryptedName == encryptedFn):
+                #remove entry
+                updated_lsFile = lsFile[:offset] + lsFile[newOffset:]
+        return updated_lsFile
 
     @staticmethod
     # Assume index starts at correct offset
     def readEntry(lsFile, offset):
+        # returns: (entryObj, nextOffset)
         # Entry looks as follows: 
-        #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName
+        #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
         # lengths:: entry length, ptName length, and encName length
         lengths = []
         isFile = False
@@ -523,9 +541,9 @@ class DCDir:
         stringBuilder = ''
         plaintextNameStart = None
         for i in range(offset,len(lsFile)):
-            char = lsfile[i]
+            char = lsFile[i]
             if char != ',':
-                lengthBuilder.append(char)
+                stringBuilder += char
             else:
                 commaCount +=1
                 if commaCount == 2: # currently building fn/dn
@@ -538,6 +556,7 @@ class DCDir:
                     lengths.append(length)
                     if commaCount == 4:
                         plaintextNameStart = i + 1
+                        break
                 # Reset stringBuilder
                 stringBuilder = ''
         entryLength = lengths[0]
@@ -546,7 +565,8 @@ class DCDir:
         plaintextName = lsFile[plaintextNameStart:plaintextNameStart+plaintextNameLength]
         encryptedNameStart = plaintextNameStart + plaintextNameLength + 1
         encryptedName = lsFile[encryptedNameStart:encryptedNameStart+encryptedNameLength]
-        return DClsEntry(isFile, isDir, plaintextName, encryptedName)
+        trueEntryLength = entryLength + len(str(entryLength))
+        return (DClsEntry(isFile, isDir, plaintextName, encryptedName), offset + trueEntryLength)
 
 
     @staticmethod
@@ -573,7 +593,7 @@ class DCDir:
         return self.encryptedDirpath + '/' + name
 
     # Add file to directory ls file
-    def registerFile(plaintextFn, encryptedFn, plaintextFileKeychainFn, encryptedFileKeychainFn, httpClient):
+    def registerFile(encryptedFn, plaintextFn, encryptedFileKeychainFn, plaintextFileKeychainFn, httpClient):
         # - Query server for secure ls file
         secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
         # - Unlock (decrypt/verify) ls file
@@ -588,8 +608,7 @@ class DCDir:
         return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
     # Remove file from directory ls file
-    #TODO: We don't need both plaintextFn & encryptedFn, we don't need both plaintextFileKeychainFn & encryptedFileKeychainFn
-    def unregisterFile(plaintextFn, encryptedFn, plaintextFileKeychainFn, encryptedFileKeychainFn, httpClient):
+    def unregisterFile(encryptedFn, encryptedFileKeychainFn, httpClient):
         # - Query server for secure ls file
         secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
         # - Unlock (decrypt/verify) ls file
@@ -604,7 +623,7 @@ class DCDir:
         return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
     # Add dir to directory ls file
-    def registerDir(plaintextDn, encryptedDn, plaintext_lsFn, encrypted_lsFn, plaintextDirKeychainFn, encryptedDirKeychainFn, httpClient):
+    def registerDir(encryptedDn, plaintextDn, encrypted_lsFn, plaintext_lsFn, encryptedDirKeychainFn, plaintextDirKeychainFn, httpClient):
         # - Query server for secure ls file
         secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
         # - Unlock (decrypt/verify) ls file
@@ -620,8 +639,7 @@ class DCDir:
         return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
     # Remove dir from directory ls file
-    #TODO: We don't need both the plaintextDn & encryptedDn, we don't need both plaintextDirKeychainFn & encryptedDirKeychainFn, we don't need plaintext_lsFn
-    def unregisterDir(plaintextDn, encryptedDn, plaintext_lsFn, encrypted_lsFn, plaintextDirKeychainFn, encryptedDirKeychainFn, httpClient):
+    def unregisterDir(encryptedDn, encrypted_lsFn, encryptedDirKeychainFn, httpClient):
         # - Query server for secure ls file
         secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
         # - Unlock (decrypt/verify) ls file
