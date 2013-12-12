@@ -29,10 +29,10 @@ class DCKey:
 
     def lock(self, plaintext):
         dcSignature = self.dcSign(plaintext)
-        secureData = self.dcEncript(dcSignature)
+        secureData = self.dcEncrypt(dcSignature)
         return secureData
 
-    def dcEncript(self, dcSignature):
+    def dcEncrypt(self, dcSignature):
         remainder = len(dcSignature) % 16
         amountPadding = 16 - remainder
         encryptor = AES.new(self.keyAES, AES.MODE_CBC, self.iv)
