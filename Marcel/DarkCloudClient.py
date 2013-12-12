@@ -5,12 +5,8 @@ import sys
 import DCCryptoClient
 import os
 
-
-class CommandError(Exception):
-    pass
-
 class DCClient:
-    def __init__(username, passwd):
+    def __init__(self, username, passwd):
         self.username = None
         self.passwd = None
         self.wd = DCWorkingDirectory(self.username, self.passwd)
@@ -20,8 +16,7 @@ class DCClient:
         #TODO: should be dependent on username
         return '.kc-' + name
 
-    def createFile(self, args):
-        fn = args[0]
+    def createFile(self, fn, content):
         kcFn = keychainFn(fn)
         path = self.wd.pwd()
         userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
@@ -66,7 +61,7 @@ class DCClient:
         #request to create regular file on server
 
         #need to encrypt empty string?
-        secureFileContent = DCCryptoClient.encryptFile("", keyObj)
+        secureFileContent = DCCryptoClient.encryptFile(content, keyObj)
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedName,
                                         True,
                                         False,
@@ -246,12 +241,11 @@ class DCClient:
 
         return name + " written"
 
-    def deleteFile(args):
-        fn = args[0]
+    def deleteFile(fn):
         kcFn = keychainFn(fn)
         path = self.wd.pwd()
-
         userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+
 
         #------- request to delete key file ----------
         #get encrypted keyfile name
@@ -416,59 +410,6 @@ class DCClient:
         if isDir:
             self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName,
                                             encryptedPath + '/' + newEncryptedLSFileName)
-
-    def login(args):
-        if len(args) != 2:
-            raise CommandError("Usage: login username passwd")
-
-        if self.username:
-            raise CommandError("Already logged in.")
-
-        self.HttpClient
-        self.username = args[0]
-        self.passwd = args[1]
-
-    def logout(args):
-        if len(args) != 0:
-            raise CommandError("Usage: logout")
-
-        if not self.username:
-            raise CommandError("Not logged in.")
-        self.username = None
-        self.passwd = None
-
-    def exit_shell(args):
-        if len(args) != 0:
-            print "Not a valid command, make sure exit has not arguments"
-        sys.exit(0)
-
-
-    def show_help(args):
-        print "Available commands:"
-        for cmd in commands:
-            print "- " + cmd
-
-
-    commands = {
-        'create': self.createFile,
-        'delete': self.delete,
-        'read': self.read,
-        'write': self.write,
-        'rename': self.rename,
-        'login': self.login,
-        'mkdir': self.mkdir,
-        'logout': self.logout,
-    }
-
-    def run_command(cmd, args):
-        print "Running %s with args %s" % (cmd, args, )
-        if cmd in commands:
-            try:
-                commands[cmd](args)
-            except CommandError, e:
-                print e.message
-        else:
-            print "%s: command not found" % (cmd, )
 
 # -------------------------------
 
@@ -644,7 +585,6 @@ class DCDir:
     def sort():
         #TODO: implement this
         pass
-
 # -----------------------------
 
 
