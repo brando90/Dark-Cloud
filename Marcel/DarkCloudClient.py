@@ -16,35 +16,46 @@ class DCClient:
         self.wd = DCWorkingDirectory(self.username, self.passwd)
         self.HttpClient = DCHTTPClient('127.0.0.1', 8080)
 
-    def keychainFilename(self, name):
+    def keychainFn(self, name):
         #TODO: should be dependent on username
         return '.kc-' + name
 
     def createFile(self, args):
-        name = args[0]
-        kfname = tableFilename(name)
-        path = self.wd.toString()
-        mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
+        fn = args[0]
+        kcFn = keychainFn(fn)
+        path = self.wd.pwd()
+        userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
-        keyObj = DCCryptoClient.createSecureKeyFile(self.username, self.passwd, kfname)
-        encryptedKeyName = DCCryptoClient.encryptName(path + '/' + kfname, mkObj) #is this the right key
-        encryptedName = DCCryptoClient.encryptName(path + '/' + name, keyObj)
-        
-        #request to read parent directory contents to add new files
-        parentName = self.wd.up(1) # returns name of directory after the last slash
-        #need to use lsfile here instead
-        dirObj = readSecureDirObj(parentName)
-        dirObj.add(encryptedKeyName, kfname)
-        dirObj.add(encryptedName, name)
-        dirObj.sort()
+        fileKeychain = DCCryptoClient.createKeyFileObj(self.username, self.passwd, kcFn)
+        encryptedFileKeychainFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain) #is this the right key
+        encryptedFn = DCCryptoClient.encryptName(path + '/' + name, fileKeychain)
 
-        #request to write the modified directory
-        self.write(parentName, dirObj.content(), True)
+        parentDn = self.wd.up(1)
+        # Initialize dcdir with: parentDn, pwd, encrypted_pwd, fileKeychain
+        dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), DCDir.verifiedDirKeychain())#TODO: pass in args for verified dirKeychain
+        # plaintextFn, encryptedFn, plaintextFileKeychainFn, encryptedFileKeychainFn, httpClient
+        dcdir.registerFile(fn, encryptedFn, kcFn, encryptedFileKeychainFn, self.HttpClient)
+        self.wd.down(parentDn)
 
-        self.wd.down(parentName)
+        # # *** BEGIN: Replaced with DCDir implementation above ***
 
-        #request to create key file on server
-        
+        #     #request to read parent directory contents to add new files
+        #     parentName = self.wd.up(1) # returns name of directory after the last slash
+        #     #need to use lsfile here instead
+        #     dirObj = readSecureDirObj(parentName)
+        #     dirObj.add(encryptedKeyName, kfname)
+        #     dirObj.add(encryptedName, name)
+        #     dirObj.sort()
+
+        #     #request to write the modified directory
+        #     self.write(parentName, dirObj.content(), True)
+
+        #     self.wd.down(parentName)
+
+        # # --- END ---
+
+
+        #request to create key file on server        
         encryptedPath = self.wd.encrypted_pwd() 
         secureKeyContent = keyObj.toSecureString(self.username, self.passwd, encryptedPath + '/' + encryptedKeyName)
         self.HttpClient.sendCreateRequest(encryptedPath + '/' + encryptedKeyName,
@@ -66,29 +77,39 @@ class DCClient:
         return "Created file: ", name
 
     def mkdir(self, args):
-        name = args[0]
-        lsname = lsFilename(name)
-        kfname = tableFilename(name)
+        dn = args[0]
+        kcFn = keychainFn(dn)
+        lsFn = lsFn(name)
         path = self.wd.toString()
-        mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
 
-        keyObj = DCCryptoClient.createSecureKeyFile(self.username, self.passwd, kfname)
-        encryptedKeyName = DCCryptoClient.encryptName(path + '/' + kfname, mkObj) #is this the right key
-        encryptedName = DCCryptoClient.encryptName(path + '/' + name, keyObj)
-        encryptedLSFileName = DCCryptoClient.encryptName(lsname, keyObj)
+        userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
-        #request to read parent directory contents to add new directory
-        parentName = self.wd.up(1) # returns name of directory after the last slash
-        dirObj = readSecureDirObj(parentName)
-        dirObj.add(encryptedKeyName, kfname)
-        dirObj.add(encryptedName, name)
-        dirObj.add(encryptedLSFileName, lsname)
-        dirObj.sort()
+        dirKeychain = DCCryptoClient.createKeyFileObj(self.username, self.passwd, kcFn)
+        encryptedDirKeychainFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain) #is this the right key
+        encryptedDn = DCCryptoClient.encryptName(path + '/' + dn, dirKeychain)
+        encrypted_lsFn = DCCryptoClient.encryptName(lsFn, dirKeychain)
 
-        #request to write the modified directory
-        self.write(parentName, dirObj.content(), True)
+        parentDn = self.wd.up(1)
+        # Initialize dcdir with: parentDn, pwd, encrypted_pwd, dirKeychain
+        dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), DCDir.verifiedDirKeychain())#TODO: pass in args for verified dirKeychain
+        # plaintextDn, encryptedDn, plaintext_lsFn, encrypted_lsFn, plaintextFileKeychainFn, encryptedFileKeychainFn, httpClient
+        dcdir.registerDir(dn, encryptedDn, lsFn, encrypted_lsFn, kcFn, encryptedDirKeychainFn, self.HttpClient)
+        self.wd.down(parentDn)
 
-        self.wd.down(parentName)
+        # # *** BEGIN: Replaced with DCDir implementation above ***
+        # #request to read parent directory contents to add new directory
+        #     parentName = self.wd.up(1) # returns name of directory after the last slash
+        #     dirObj = readSecureDirObj(parentName)
+        #     dirObj.add(encryptedKeyName, kfname)
+        #     dirObj.add(encryptedName, name)
+        #     dirObj.add(encryptedLSFileName, lsname)
+        #     dirObj.sort()
+
+        #     #request to write the modified directory
+        #     self.write(parentName, dirObj.content(), True)
+
+        #     self.wd.down(parentName)
+        # # --- 
 
         #request to create key file and directory on server
         
@@ -225,38 +246,47 @@ class DCClient:
 
         return name + " written"
 
-    def delete(args):
-        name = args[0]
-        kfname = tableFilename(name)
-        path = self.wd.toString()
-        mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
+    def deleteFile(args):
+        fn = args[0]
+        kcFn = keychainFn(fn)
+        path = self.wd.pwd()
+
+        userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
         #------- request to delete key file ----------
         #get encrypted keyfile name
-        encryptedKeyName = DCCryptoClient.encryptName(path + '/' + kfname, mkObj)
-        encryptedPath = self.wd.encrypted_pwd()
+        encryptedFileKeychainFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain)
 
         #request keyfile
-        secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyName)
+        secureKeychainContent = self.HttpClient.sendReadRequest(self.wd.encrypted_pwd() + '/' + encryptedFileKeychainFn)
 
         #construct key object
-        keyObj = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
+        dirKeychain = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd)
 
         #request encrypted file using encrypted file name
-        encryptedFileName = DCCryptoClient.encryptName(path + '/' + name, keyObj)
+        encryptedDn = DCCryptoClient.encryptName(path + '/' + dn, dirKeychain)
 
-        # -- request to change parent directory structure --
-        #request to read parent directory contents to add new directory
-        parentName = self.wd.up(1) # returns name of directory after the last slash
-        dirObj = readSecureDirObj(parentName)
-        dirObj.remove(encryptedKeyName, kfname)
-        dirObj.remove(encryptedName, name)
-        dirObj.sort()
+        parentDn = self.wd.up(1)
+        # Initialize dcdir with: parentDn, pwd, encrypted_pwd, fileKeychain
+        dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), DCDir.verifiedDirKeychain())#TODO: pass in args for verified dirKeychain
+        # 
+        dcdir.unregisterDir(fn, encryptedFn, kcFn, encryptedFileKeychainFn, self.HttpClient)
+        self.wd.down(parentDn)
 
-        #request to write the modified directory
-        self.write(parentName, dirObj.content(), True)
+        # # *** BEGIN: Replaced with DCDir implementation above ***
+        #     # -- request to change parent directory structure --
+        #     #request to read parent directory contents to add new directory
+        #     parentName = self.wd.up(1) # returns name of directory after the last slash
+        #     dirObj = readSecureDirObj(parentName)
+        #     dirObj.remove(encryptedKeyName, kfname)
+        #     dirObj.remove(encryptedName, name)
+        #     dirObj.sort()
 
-        self.wd.down(parentName)
+        #     #request to write the modified directory
+        #     self.write(parentName, dirObj.content(), True)
+
+        #     self.wd.down(parentName)
+        # # --- END ---
 
         #---------- request to delete file -----------
         #delete keyfile
@@ -267,42 +297,53 @@ class DCClient:
 
         return
 
+    # rmdir => dirs only
     def rmdir(args):
-        name = args[0]
-        kfname = tableFilename(name)
-        lsname = lsFilename(name)
+        dn = args[0]
+        kcFn = keychainFn(dn)
+        lsFn = lsFn(name)
         path = self.wd.toString()
-        mkObj = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
+        userKeychain = DCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
         #------- request to delete key directory ----------
         #get encrypted keyfile name
-        encryptedKeyName = DCCryptoClient.encryptName(path + '/' + kfname, mkObj)
+        encryptedKeyFn = DCCryptoClient.encryptName(path + '/' + kcFn, userKeychain)
         encryptedPath = self.wd.encrypted_pwd()
 
         #request keyfile
-        secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyName)
+        secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFn)
 
         #construct key object
-        keyObj = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
+        dirKeychain = DCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
 
         #request encrypted file using encrypted file name
-        encryptedFileName = DCCryptoClient.encryptName(path + '/' + name, keyObj)
-        encryptedLSFileName = DCCryptoClient.encryptName(path + '/' + lsname, keyObj)
+        encryptedDn = DCCryptoClient.encryptName(path + '/' + dn, dirKeychain)
+        encrypted_lsFn = DCCryptoClient.encryptName(path + '/' + lsFn, dirKeychain)
 
+        parentDn = self.wd.up(1)
+        # Initialize dcdir with: parentDn, pwd, encrypted_pwd, dirKeychain
+        dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), DCDir.verifiedDirKeychain())#TODO: pass in args for verified dirKeychain
+        # plaintextDn, encryptedDn, plaintext_lsFn, encrypted_lsFn, plaintextDirKeychainFn, encryptedDirKeychainFn, httpClient
+        dcdir.unregisterDir(dn, encryptedDn, lsFn, encrypted_lsFn, kcFn, encryptedDirKeychainFn, self.HttpClient)
+        self.wd.down(parentDn)
 
-        # -- request to change parent directory structure --
-        #request to read parent directory contents to add new directory
-        parentName = self.wd.up(1) # returns name of directory after the last slash
-        dirObj = readSecureDirObj(parentName)
-        dirObj.remove(encryptedKeyName, kfname)
-        dirObj.remove(encryptedName, name)
-        dirObj.remove(encryptedLSFileName, lsname)
-        dirObj.sort()
+        # # *** BEGIN: Replaced with DCDir implementation above ***
 
-        #request to write the modified directory
-        self.write(parentName, dirObj.content(), True)
+        # # -- request to change parent directory structure --
+        # #request to read parent directory contents to add new directory
+        # parentName = self.wd.up(1) # returns name of directory after the last slash
+        # dirObj = readSecureDirObj(parentName)
+        # dirObj.remove(encryptedKeyName, kfname)
+        # dirObj.remove(encryptedName, name)
+        # dirObj.remove(encryptedLSFileName, lsname)
+        # dirObj.sort()
 
-        self.wd.down(parentName)
+        # #request to write the modified directory
+        # self.write(parentName, dirObj.content(), True)
+
+        # self.wd.down(parentName)
+
+        # # --- END ---
 
         #---------- request to delete directory -----------
         #delete keyfile
@@ -494,25 +535,24 @@ class DCDir:
     # *** Class attrs & methods ***
 
     @staticmethod
-    def lsFilename(dirname):
+    def lsFn(dirname):
         #TODO: make this more legit
         return '.ls-' + dirname
 
     @staticmethod
     def add_lsEntry(lsFile, plaintextFilename, encryptedFilename):
+        #TODO: implement this
         pass
 
     @staticmethod
     def remove_lsEntry(lsFile, plaintextFilename, encryptedFilename):
+        #TODO: implement this
         pass
 
-    # @staticmethod
-    # def add_lsDirEntry(lsFile, plaintextDirname, encryptedDirpath):
-    #     pass
-
-    # @staticmethod
-    # def remove_lsDirEntry(lsFile, plaintextDirname, encryptedDirpath):
-    #     pass
+    @staticmethod
+    def verifiedDirKeychain():
+        #TODO: implement this
+        pass
 
     # ------------------------
 
@@ -520,13 +560,13 @@ class DCDir:
     # *** Instance methods ***
 
     def __init__(self, dirname, pwd, encrypted_pwd, dirKeychain): # how should this be initialized
-        self.dirname = dirname
-        self.encryptedDirname = DCCryptoClient.encryptName(self.dirname, dirKeychain)
+        self.dn = dn
+        self.encryptedDirname = DCCryptoClient.encryptName(self.dn, dirKeychain)
         #TODO: path to dir.. necessary?
         self.dirpath = dirpath
         self.encryptedDirpath = encryptedDirpath
-        self.lsFilename = lsFilename(dirname)
-        self.encrypted_lsFilename = dcCryptoClient.encryptName(self.lsFilename, dirKeychain)
+        self.lsFn = lsFn(dn)
+        self.encrypted_lsFn = dcCryptoClient.encryptName(self.lsFn, dirKeychain)
         self.dirKeychain = dirKeychain
     
     def fullEncryptedPath(name):
@@ -536,65 +576,73 @@ class DCDir:
         pass
 
     # Add file to directory ls file
-    def registerFile(plaintextFilename, encryptedFilename, plaintextFileKeychainName, encryptedFileKeychainName, httpClient):
+    def registerFile(plaintextFn, encryptedFn, plaintextFileKeychainFn, encryptedFileKeychainFn, httpClient):
         # - Query server for secure ls file
-        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFilename))
+        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file with new filename and fileKeychain filename (plaintext & encrypted name)
-        lsFile_file = DCDir.add_lsFileEntry(lsFile, plaintextFilename, encryptedFilename)
-        lsFile_file_keychain = DCDir.add_lsFileEntry(lsFile_file, plaintextFileKeychainName, encryptedFileKeychainName)
+        lsFile_file = DCDir.add_lsFileEntry(lsFile, plaintextFn, encryptedFn)
+        lsFile_file_keychain = DCDir.add_lsFileEntry(lsFile_file, plaintextFileKeychainFn, encryptedFileKeychainFn)
+        #TODO: sort lsFile
         # - Secure (sign/encrypt) updated ls file
         updatedSecure_lsFile = self.dirKeychain.lock(lsFile_file_keychain)
         # - Query server to overwrite secure ls file
-        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFilename), updatedSecure_lsFile)
+        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
     # Remove file from directory ls file
-    def unregisterFile(plaintextFilename, encryptedFilename, plaintextFileKeychainName, encryptedFileKeychainName, httpClient):
+    #TODO: We don't need both plaintextFn & encryptedFn, we don't need both plaintextFileKeychainFn & encryptedFileKeychainFn
+    def unregisterFile(plaintextFn, encryptedFn, plaintextFileKeychainFn, encryptedFileKeychainFn, httpClient):
         # - Query server for secure ls file
-        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFilename))
+        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file by deleting filename and fileKeychain name (plaintext & encrypted name)
-        lsFile_file = DCDir.remove_lsFileEntry(lsFile, plaintextFilename, encryptedFilename)
-        lsFile_file_keychain = DCDir.remove_lsFileEntry(lsFile_file, plaintextFileKeychainName, encryptedFileKeychainName)
+        lsFile_file = DCDir.remove_lsFileEntry(lsFile, plaintextFn, encryptedFn)
+        lsFile_file_keychain = DCDir.remove_lsFileEntry(lsFile_file, plaintextFileKeychainFn, encryptedFileKeychainFn)
+        #TODO: sort lsFile
         # - Secure (sign/encrypt) updated ls file
         updatedSecure_lsFile = self.dirKeychain.lock(lsFile_file_keychain)
         # - Query server to overwrite secure ls file
-        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFilename), updatedSecure_lsFile)
+        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
     # Add dir to directory ls file
-    def registerDir(plaintextFilename, encryptedFilename, plaintext_lsFilename, encrypted_lsFilename, plaintextFileKeychainName, encryptedFileKeychainName, httpClient):
+    def registerDir(plaintextDn, encryptedDn, plaintext_lsFn, encrypted_lsFn, plaintextDirKeychainFn, encryptedDirKeychainFn, httpClient):
         # - Query server for secure ls file
-        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFilename))
+        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file with new filename and fileKeychain filename (plaintext & encrypted name)
-        lsFile_dir = DCDir.add_lsEntry(lsFile, plaintextDirname, encryptedDirname)
-        lsFile_dir_ls = DCDir.add_lsEntry(lsFile_dir, plaintext_lsFilename, encrypted_lsFilename)
-        lsFile_dir_ls_keychain = DCDir.add_lsEntry(lsFile_dir_ls, plaintextFileKeychainName, encryptedFileKeychainName)
+        lsFile_dir = DCDir.add_lsEntry(lsFile, plaintextDn, encryptedDn)
+        lsFile_dir_ls = DCDir.add_lsEntry(lsFile_dir, plaintext_lsFn, encrypted_lsFn)
+        lsFile_dir_ls_keychain = DCDir.add_lsEntry(lsFile_dir_ls, plaintextDirKeychainFn, encryptedDirKeychainFn)
+        #TODO: sort lsFile
         # - Secure (sign/encrypt) updated ls file
         updatedSecure_lsFile = self.dirKeychain.lock(lsFile_dir_ls_keychain)
         # - Query server to overwrite secure ls file
-        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFilename), updatedSecure_lsFile)
+        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
     # Remove dir from directory ls file
-    def unregisterDir(plaintextDirname, httpClient):
+    #TODO: We don't need both the plaintextDn & encryptedDn, we don't need both plaintextDirKeychainFn & encryptedDirKeychainFn, we don't need plaintext_lsFn
+    def unregisterDir(plaintextDn, encryptedDn, plaintext_lsFn, encrypted_lsFn, plaintextDirKeychainFn, encryptedDirKeychainFn, httpClient):
         # - Query server for secure ls file
-        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFilename))
+        secure_lsFile = httpClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file by removing dirname, dir_lsFile and dirKeychain filename (plaintext & encrypted name)
-        lsFile_dir = DCDir.remove_lsEntry(lsFile, plaintextDirname, encryptedDirname)
-        lsFile_dir_ls = DCDir.remove_lsEntry(lsFile_dir, plaintext_lsFilename, encrypted_lsFilename)
-        lsFile_dir_ls_keychain = DCDir.remove_lsEntry(lsFile_dir_ls, plaintextFileKeychainName, encryptedFileKeychainName)
+        lsFile_dir = DCDir.remove_lsEntry(lsFile, plaintextDn, encryptedDn)
+        lsFile_dir_ls = DCDir.remove_lsEntry(lsFile_dir, plaintext_lsFn, encrypted_lsFn)
+        lsFile_dir_ls_keychain = DCDir.remove_lsEntry(lsFile_dir_ls, plaintextDirKeychainFn, encryptedDirKeychainFn)
+        #TODO: sort lsFile
         # - Secure (sign/encrypt) updated ls file
         updatedSecure_lsFile = self.dirKeychain.lock(lsFile_dir_ls_keychain)
         # - Query server to overwrite secure ls file
-        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFilename), updatedSecure_lsFile)
+        return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
     # To make sure ls reference and dir contents can be compared properly in verification
+    # this should probably be static
     def sort():
+        #TODO: implement this
         pass
 
 # -----------------------------
