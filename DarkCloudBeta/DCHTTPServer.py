@@ -119,6 +119,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 			return
 
 	def tmpPath(self, encryptedPath):
+		print "absolute path: "+ DCRoot + encryptedPath
 		return DCRoot + encryptedPath
 
 	# def parseURL(self):
@@ -145,7 +146,9 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 		return self.headers.getheader('query-string')
 
 	def getURL(self):
-		return self.headers.getheader('url')
+		url = self.headers.getheader('url')
+		print "Server-side path:\n" + url
+		return url
 
 	# ----------------------
 

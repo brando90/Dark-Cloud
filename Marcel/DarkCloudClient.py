@@ -7,6 +7,7 @@ import os
 from DCHTTPClient import *
 
 GDCCryptoClient = DCCryptoClient()
+GDCHTTPClient = DCHTTPClient('127.0.0.1', 8080)
 
 def keychainFn(name, username):
     print "kcFn start"
@@ -74,8 +75,9 @@ class DCClient:
         fileKeychain = self.cryptClient.createKeyFileObj()
         encryptedFileKeychainFn = self.cryptClient.encryptName(path + '/' + kcFn, userKeychain) #is this the right key
         encryptedFn = self.cryptClient.encryptName(path + '/' + fn, fileKeychain)
-
+        print ""
         parentDn = self.wd.up(1)
+        print "looking for parent dir"
         if parentDn:
             print "self.username at createFile: " + self.username
             parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.passwd, parentDn, self.wd.encrypted_pwd(), self.HttpClient)
@@ -550,11 +552,16 @@ class DCWorkingDirectory:
 
     def root(self):
         kcFn = keychainFn(self.username, self.username)
-        userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.password, '/' + kcFn)
-        dirKeychain = GDCCryptoClient.createKeyFileObj()
         print "username: %s, password: %s" % (self.username, self.password)
-        encryptedRoot =  GDCCryptoClient.encryptName(self.currentRoot, dirKeychain)
+
+        userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.password, kcFn)
+        encryptedFileKeychainFn = GDCCryptoClient.encryptName(kcFn, userKeychain)
+        print "trying to access eFKcFn: " + encryptedFileKeychainFn
+        secureRootKeychain = GDCHTTPClient.sendReadRequest(encryptedFileKeychainFn)
+        rootKeychain =  GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureRootKeychain, self.username, self.password, encryptedFileKeychainFn)
+        encryptedRoot = GDCCryptoClient.encryptName(self.username,rootKeychain)
         print "Encrypted ROOT: " + encryptedRoot
+
         return encryptedRoot
 
     def switchRoot(self,otherUser):
