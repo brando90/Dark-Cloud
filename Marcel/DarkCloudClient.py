@@ -649,9 +649,10 @@ class DCDir:
         # - Update ls file with new filename and fileKeychain filename (plaintext & encrypted name)
         lsFile_file = DCDir.add_lsFileEntry(lsFile, plaintextFn, encryptedFn)
         lsFile_file_keychain = DCDir.add_lsFileEntry(lsFile_file, plaintextFileKeychainFn, encryptedFileKeychainFn)
-        #TODO: sort lsFile
-        # - Secure (sign/encrypt) updated ls file
-        updatedSecure_lsFile = self.dirKeychain.lock(lsFile_file_keychain)
+        # -Sort updated ls file
+        updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_file_keychain)
+        # - Secure (sign/encrypt) updated, sorted ls file
+        updatedSecure_lsFile = self.dirKeychain.lock(updatedSorted_lsFile)
         # - Query server to overwrite secure ls file
         return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
@@ -664,9 +665,10 @@ class DCDir:
         # - Update ls file by deleting filename and fileKeychain name (plaintext & encrypted name)
         lsFile_file = DCDir.remove_lsFileEntry(lsFile, encryptedFn)
         lsFile_file_keychain = DCDir.remove_lsFileEntry(lsFile_file, encryptedFileKeychainFn)
-        #TODO: sort lsFile
-        # - Secure (sign/encrypt) updated ls file
-        updatedSecure_lsFile = self.dirKeychain.lock(lsFile_file_keychain)
+        # - Sort updated ls file
+        updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_file_keychain)
+        # - Secure (sign/encrypt) updated, sorted ls file
+        updatedSecure_lsFile = self.dirKeychain.lock(updatedSorted_lsFile)
         # - Query server to overwrite secure ls file
         return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
@@ -680,9 +682,10 @@ class DCDir:
         lsFile_dir = DCDir.add_lsEntry(lsFile, plaintextDn, encryptedDn)
         lsFile_dir_ls = DCDir.add_lsEntry(lsFile_dir, plaintext_lsFn, encrypted_lsFn)
         lsFile_dir_ls_keychain = DCDir.add_lsEntry(lsFile_dir_ls, plaintextDirKeychainFn, encryptedDirKeychainFn)
-        #TODO: sort lsFile
-        # - Secure (sign/encrypt) updated ls file
-        updatedSecure_lsFile = self.dirKeychain.lock(lsFile_dir_ls_keychain)
+        # - Sort updated ls file
+        updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_dir_ls_keychain)
+        # - Secure (sign/encrypt) updated, sorted ls file
+        updatedSecure_lsFile = self.dirKeychain.lock(updatedSorted_lsFile)
         # - Query server to overwrite secure ls file
         return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
@@ -696,9 +699,10 @@ class DCDir:
         lsFile_dir = DCDir.remove_lsEntry(lsFile, encryptedDn)
         lsFile_dir_ls = DCDir.remove_lsEntry(lsFile_dir, encrypted_lsFn)
         lsFile_dir_ls_keychain = DCDir.remove_lsEntry(lsFile_dir_ls, encryptedDirKeychainFn)
-        #TODO: sort lsFile
-        # - Secure (sign/encrypt) updated ls file
-        updatedSecure_lsFile = self.dirKeychain.lock(lsFile_dir_ls_keychain)
+        # - Sort updated ls file
+        updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_dir_ls_keychain)
+        # - Secure (sign/encrypt) updated, sorted ls file
+        updatedSecure_lsFile = self.dirKeychain.lock(updatedSorted_lsFile)
         # - Query server to overwrite secure ls file
         return httpClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
 
