@@ -4,11 +4,15 @@ import DarkCloudClient
 import subprocess
 import shlex
 import sys
+import re
 
 prompt = "DarkCloud >>> "
 
 class CommandError(Exception):
     pass
+
+def isUnsanitizedName(name):
+    return re.match("\..*|\.kc-.*|\.ls-.*", name):
 
 class DCClientParser:
     """docstring for DarkCloudClientParser"""
@@ -34,9 +38,24 @@ class DCClientParser:
             'help': self.show_help,
             'cd': self.cd,
             'vim': self.vim,
+            'newAccount': newAccount,
             'readFiles': self.showReadFiles #maybe
         }
         
+    def newAccount(self, args):
+        un = raw_input('Username: ')
+        pd = getpass.getpass()
+
+        if isUnsanitizedName():
+            print "Invalid username, please select a different username."
+            return
+        self.username = un
+        self.passwd = pd
+
+        #sanitize input?
+
+        self.dcClient = DarkCloudClient.createAccount(self.username, self.passwd)
+
     def create(self, args):
         if len(args) == 2:
             name = args[1] #input sanitization
