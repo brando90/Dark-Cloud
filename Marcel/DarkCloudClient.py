@@ -658,10 +658,10 @@ class DCDir:
     @staticmethod
     def verifyWith_lsFile(encryptedDirEntries, lsFile):
         # If successful, returns a list of plaintext names of directory entries
-        #TODO: format read dir string obtained from server 
-        #   -> parse string into array of encrypted entry names
-        #   -> sort array (referred to below as sortedEncryptedDirEntries)
-        # sort encrypted dir contents
+        # encryptedDirEntries should be the array received from the server 
+        #   i.e. (result of a read directory request)
+        # Sort encrypted dir contents
+        sortedEncryptedDirEntries = sorted(encryptedDirEntries, key=lambda dirEntry: dirEntry)
         offset = 0
         entryCounter = 0
         plaintextEntryNames = []
