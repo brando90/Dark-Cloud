@@ -22,13 +22,10 @@ File = 'file'
 Dir = 'dir'
 # -------------------------
 
-DCRoot = 'DCRoot/'
+DCRoot = 'DCRoot'
 
 class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	# *** 'Overridden' methods ***
-
-	def __init__(self, *args):
-		BaseHTTPRequestHandler.__init__(self, *args)
 
 	# Create
 	def do_PUT(self):
@@ -82,7 +79,7 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 			else:
 				self.send_error(405, "Path for POST request with 'write' method must point to a file")
 		elif method == Rename:
-			newEncryptedPath = self.getEncryptedBody()
+			newEncryptedPath = self.tmpPath(self.getEncryptedBody())
 			self.renameFileOrDir(encryptedPath, newEncryptedPath)
 		else:
 			self.send_error(405, "POST requests must have method set to 'write' or 'rename'")
@@ -119,7 +116,8 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 			return
 
 	def tmpPath(self, encryptedPath):
-		print "absolute path: "+ DCRoot + encryptedPath
+		print "root: %s, encryptedPath: %s " % (DCRoot, encryptedPath)
+		print "tmpPath = " + DCRoot + encryptedPath
 		return DCRoot + encryptedPath
 
 	# def parseURL(self):
@@ -224,7 +222,11 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 	def renameFileOrDir(self, encryptedPath, newPath):
 		# rename file or dir
-		os.rename(encryptedPath, newPath)
+		newProperlyEncryptedPath = urllib.quote(newPath)
+		print "Attempting rename..."
+		print "eP: " + encryptedPath
+		print "newProperlyEncryptedPath: " + newProperlyEncryptedPath
+		os.rename(encryptedPath, newProperlyEncryptedPath)
 
 		self.send_response(200)
 		return
@@ -245,6 +247,11 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 
 # ----------------------------------
 
+class DCHTTPServer(HTTPServer):
+	def __init__(self, server_address, RequestHandlerClass):
+		HTTPServer.__init__(self, server_address, RequestHandlerClass)
+		DCRoot = os.getcwd() + '/DCRoot'
+		print 'DCRoot: ' + DCRoot
 
 # *** Run Dark Cloud Beta Server ***
 
@@ -260,8 +267,9 @@ def run():
 			port = int(sys.argv[2])
 		server_address = (host, port)
 		print('Dark Cloud Beta server is starting at host:%s & port:%s' % server_address)
-		httpd = HTTPServer(server_address, DCHTTPRequestHandler)
+		httpd = DCHTTPServer(server_address, DCHTTPRequestHandler)
 		print('Dark Cloud Beta server is now running...')
+		print ('Correct Server implementation')
 		httpd.serve_forever()
 	except EOFError:
 		print '\nServer closed'

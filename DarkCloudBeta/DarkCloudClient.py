@@ -37,16 +37,16 @@ def register(username, passwd):
     userKeychain = GDCCryptoClient.createUserMasterKeyObj(username, passwd, '/'+kcFn)
 
     dirKeychain = GDCCryptoClient.createKeyFileObj('/'+username)
-    encryptedDirKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(kcFn, userKeychain))
-    encryptedDn = nameDecorator(dn, GDCCryptoClient.encryptName(dn, dirKeychain))
-    encrypted_lsFn = lsDecorator(dn, GDCCryptoClient.encryptName(lsFn, dirKeychain))
+    encryptedDirKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName('/'+kcFn, userKeychain))
+    encryptedDn = nameDecorator(dn, GDCCryptoClient.encryptName('/'+dn, dirKeychain))
+    encrypted_lsFn = lsDecorator(dn, GDCCryptoClient.encryptName('/'+lsFn, dirKeychain))
 
-    secureKeychainContent = dirKeychain.toSecureString(username, passwd, '/'+username+'/'+kcFn)
+    secureKeychainContent = dirKeychain.toSecureString(username, passwd, '/'+kcFn)
 
     print "eDKcFn: " + urllib.quote(encryptedDirKeychainFn)
 
     #keyfile
-    GDCHTTPClient.sendCreateRequest(encryptedDirKeychainFn,
+    GDCHTTPClient.sendCreateRequest('/'+encryptedDirKeychainFn,
                                     True,
                                     False,
                                     secureKeychainContent)
@@ -55,7 +55,7 @@ def register(username, passwd):
 
     #lsfile
     secure_lsFileContent = dirKeychain.lock("")
-    GDCHTTPClient.sendCreateRequest(encrypted_lsFn,
+    GDCHTTPClient.sendCreateRequest('/'+encrypted_lsFn,
                                     True,
                                     False,
                                     secure_lsFileContent)
@@ -64,7 +64,7 @@ def register(username, passwd):
 
     #directory
     print 
-    GDCHTTPClient.sendCreateRequest(encryptedDn,
+    GDCHTTPClient.sendCreateRequest('/'+encryptedDn,
                                     False,
                                     True)
     
@@ -80,21 +80,29 @@ class DCClient:
     def createFile(self, fn, content):
         print "createFile"
         kcFn = keychainFn(fn, self.username)
-        path = self.wd.pwd()
-        print "create file path: "+ path
-        userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
-        fileKeychain = GDCCryptoClient.createKeyFileObj(path + '/' + fn)
-        encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(path + '/' + kcFn, userKeychain)) #is this the right key
-        encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(path + '/' + fn, fileKeychain))
+        pwd = self.wd.pwd()
+        print "create file path: "+ pwd
+        userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
+        fileKeychain = GDCCryptoClient.createKeyFileObj(pwd + fn)
+
+        encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain)) #is this the right key
+        encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(pwd + fn, fileKeychain))
         parentDn = self.wd.up(1) 
+        print "parent Dirname = " + parentDn
         if parentDn:
+            print "registering with parentDir: " + parentDn
+
             # username, password, dn, pwd, encrypted_pwd, httpClient
             parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.passwd, parentDn, self.wd.pwd(),self.wd.encrypted_pwd())
+            print "verified dirkeychain"
+
             # Initialize dcdir with: parentDn, pwd, encrypted_pwd, parentDirKeychain
             dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), parentDirKeychain)
             # encryptedFn, plaintextFn, encryptedFileKeychainFn, plaintextFileKeychainFn, httpClient
             dcdir.registerFile(encryptedFn, fn, encryptedFileKeychainFn, kcFn)
+            print "pwd at parent dir: " + self.wd.pwd()
             self.wd.down(parentDn)
+            print "pwd after cding back into dir: " + self.wd.pwd()
 
         # # *** BEGIN: Replaced with DCDir implementation above ***
 
@@ -115,10 +123,11 @@ class DCClient:
 
 
         #request to create key file on server   
-        print "pathToKeys: " + repr(GDCCryptoClient.pathToKeys)     
-        encryptedPath = self.wd.encrypted_pwd() 
-        secureKeyContent = fileKeychain.toSecureString(self.username, self.passwd, encryptedPath + '/' + encryptedFileKeychainFn)
-        GDCHTTPClient.sendCreateRequest(encryptedPath + '/' + encryptedFileKeychainFn,
+        print "pathsToKeys: " + repr(GDCCryptoClient.pathsToKeys)     
+        encryptedPwd = self.wd.encrypted_pwd()
+        print 'encryptedPwd: ' + encryptedPwd
+        secureKeyContent = fileKeychain.toSecureString(self.username, self.passwd, encryptedPwd + encryptedFileKeychainFn)
+        GDCHTTPClient.sendCreateRequest(encryptedPwd + encryptedFileKeychainFn,
                                         True,
                                         False,
                                         secureKeyContent)
@@ -126,8 +135,8 @@ class DCClient:
         #request to create regular file on server
 
         #need to encrypt empty string?
-        secureFileContent = self.cryptClient.encryptFile(content, fileKeychain)
-        GDCHTTPClient.sendCreateRequest(encryptedPath + '/' +encryptedFn,
+        secureFileContent = GDCCryptoClient.encryptFile(content, fileKeychain)
+        GDCHTTPClient.sendCreateRequest(encryptedPwd + encryptedFn,
                                         True,
                                         False,
                                         secureFileContent)
@@ -139,14 +148,14 @@ class DCClient:
         dn = name
         kcFn = keychainFn(dn, self.username)
         lsFn = nameTo_lsFn(dn)
-        path = self.wd.pwd()
+        pwd = self.wd.pwd()
 
-        userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+        userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
 
-        dirKeychain = GDCCryptoClient.createKeyFileObj(path+'/'+dn)
-        encryptedDirKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(path + '/' + kcFn, userKeychain)) #is this the right key
-        encryptedDn = nameDecorator(dn, GDCCryptoClient.encryptName(path + '/' + dn, dirKeychain))
-        encrypted_lsFn = lsDecorator(dn, GDCCryptoClient.encryptName(path + '/' + lsFn, dirKeychain)) # is the path needed??
+        dirKeychain = GDCCryptoClient.createKeyFileObj(pwd + dn)
+        encryptedDirKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain)) #is this the right key
+        encryptedDn = nameDecorator(dn, GDCCryptoClient.encryptName(pwd + dn, dirKeychain))
+        encrypted_lsFn = lsDecorator(dn, GDCCryptoClient.encryptName(pwd + lsFn, dirKeychain)) # is the path needed??
 
         parentDn = self.wd.up(1)
         if parentDn:
@@ -174,18 +183,19 @@ class DCClient:
 
         #request to create key file and directory on server
         
-        encryptedPath = self.wd.encrypted_pwd()
-        secureKeyContent = dirKeychain.toSecureString(self.username, self.passwd, encryptedPath + '/' + encryptedDirKeychainFn)
+        encryptedPwd = self.wd.encrypted_pwd()
+        secureKeyContent = dirKeychain.toSecureString(self.username, self.passwd, encryptedPwd + encryptedDirKeychainFn)
 
         #keyfile
-        GDCHTTPClient.sendCreateRequest(encryptedPath + '/' + encryptedDirKeychainFn,
+        GDCHTTPClient.sendCreateRequest(encryptedPwd + encryptedDirKeychainFn,
                                         True,
                                         False,
                                         secureKeyContent)
 
         #lsfile
-        secureFileContent = self.cryptClient.encryptFile("", dirKeychain)
-        GDCHTTPClient.sendCreateRequest(encryptedPath + '/' + encrypted_lsFn,
+
+        secureFileContent = GDCCryptoClient.encryptFile("", dirKeychain)
+        GDCHTTPClient.sendCreateRequest(encryptedPwd + encrypted_lsFn,
                                         True,
                                         False,
                                         secureFileContent)
@@ -193,37 +203,42 @@ class DCClient:
         print "newAccount: encryptedDn:" +encryptedDn
 
         #directory
-        GDCHTTPClient.sendCreateRequest(encryptedPath + '/' + encryptedDn,
+        GDCHTTPClient.sendCreateRequest(encryptedPwd + encryptedDn,
                                         False,
                                         True)
 
         return "Created directory: ", name
 
     def read(self, encryptedName):
-        encryptedPath = self.wd.encrypted_pwd()
-        content = GDCHTTPClient.sendReadRequest(encryptedPath + '/' + encryptedName)
+        print "read encryptedName: " + encryptedName
+        encryptedPwd = self.wd.encrypted_pwd()
+        content = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedName)
         return content
 
     def readFile(self,name):
         print "readFile"
         fn = name
         kcFn = keychainFn(fn, self.username)
-        path = self.wd.pwd()
+        pwd = self.wd.pwd()
         
-        fileKeychain = GDCCryptoClient.getKey(path+'/'+fn)
+        fileKeychain = GDCCryptoClient.getKey(pwd + fn)
         if not fileKeychain:
-            userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+            userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
 
             #get encrypted keyfile name
-            encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptedName(path + '/' + kcFn, userKeychain))
+            encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
+
+            print "readFile eFKcFn: " + encryptedFileKeychainFn
 
             secureKeyfileContent = self.read(encryptedFileKeychainFn)
 
             #construct key object
-            fileKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, path + '/' + kcFn)
+            fileKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, pwd + kcFn)
+
+        print "fKc: " + str(fileKeychain)
 
         #request encrypted file using encrypted file name
-        encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(path + '/' + fn, fileKeychain))
+        encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(pwd + fn, fileKeychain))
 
         encryptedFileContent = self.read(encryptedFn)
 
@@ -233,74 +248,35 @@ class DCClient:
         #verify contents
 
         return decryptedFileContent
-
-    # def readSecureDirObj(name):
-    #     kfname = tableFilename(name)
-    #     lsname = lsFilename(name)
-    #     path = self.wd.pwd()
-    #     mkObj = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
-
-    #     #get encrypted keyfile name
-    #     encryptedKeyFileName = self.cryptClient.encryptName(path + '/' + kfname, mkObj)
-
-    #     #TODO:check that keys exist for all parts of the encrypted path
-
-    #     encryptedPath = self.wd.encrypted_pwd()
-
-    #     #request keyfile
-    #     secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFileName)
-
-    #     #construct key object
-    #     keyObj = self.cryptClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
-
-    #     #save keyobj for later
-    #     self.cryptClient.addKeyObj(path + '/' + lsname, keyObj)
-
-    #     #request encrypted file using encrypted file name
-    #     encryptedLSFileName = self.cryptClient.encryptName(path + '/' + lsname, keyObj)
-    #     encryptedDirName = self.cryptClient.encryptName(path + '/' + name, keyObj)
-
-    #     encryptedLSFileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName)
-    #     dirContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedDirName)
-
-    #     #decrypt file contents
-    #     decryptedLSFileContent = self.cryptClient.decryptFile(encryptedLSFileContent, keyObj)
-
-    #     #verify contents
-    #     dirObj = DCSecureDir(dirContent, decryptedLSFileContent)
-
-    #     return dirObj
     
     def readDir(self, name):
         print "readDir"
         dn = name
         kcFn = keychainFn(dn, self.username)
         lsFn = nameTo_lsFn(dn)
-        path = self.wd.pwd()
+        pwd = self.wd.pwd()
 
-        dirKeychain = GDCCryptoClient.getKey(path+'/'+dn)
+        dirKeychain = GDCCryptoClient.getKey(pwd + dn)
+        encryptedPwd = self.wd.encrypted_pwd()
 
         if not dirKeychain:
-            userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+            userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
 
-            encryptedFileKeychainFn = keychainDecorator(dn, self.cryptClient.encryptName(path + '/' + kcFn, userKeychain))
-            encryptedPath = self.wd.encrypted_pwd()
+            encryptedFileKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
+
 
             #request keyfile
-            secureKeyContent = GDCHTTPClient.sendReadRequest(encryptedPath + '/' + encryptedFileKeychainFn)
+            secureKeychainContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedFileKeychainFn)
 
             #construct key object
-            dirKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, path+'/'+kcFn)
-
-        #save keyobj for later
-        GDCCryptoClient.addKeyObj(path + '/' + lsFn, dirKeychain)
+            dirKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd, pwd + kcFn)
 
         #request encrypted file using encrypted file name
-        encrypted_lsFn = lsDecorator(dn, GDCCryptoClient.encryptName(path + '/' + lsFn, dirKeychain))
-        encryptedDn = nameDecorator(dn, GDCCryptoClient.encryptName(path + '/' + dn, dirKeychain))
+        encrypted_lsFn = lsDecorator(dn, GDCCryptoClient.encryptName(pwd + lsFn, dirKeychain))
+        encryptedDn = nameDecorator(dn, GDCCryptoClient.encryptName(pwd + dn, dirKeychain))
 
-        encryptedLSFileContent = GDCHTTPClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName)
-        encryptedDirEntries = GDCHTTPClient.sendReadRequest(encryptedPath + '/' + encryptedDirName)
+        encryptedLSFileContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encrypted_lsFn)
+        encryptedDirEntries = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedDn)
 
         #decrypt file contents
         lsFile = GDCCryptoClient.decryptFile(encryptedLSFileContent, dirKeychain)
@@ -321,30 +297,30 @@ class DCClient:
         kcFn = keychainFn(fn, self.username)
         if isLS:
             lsFn = nameTo_lsFn(dn)
-        path = self.wd.pwd()
+        pwd = self.wd.pwd()
         
-        userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+        userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
 
         #TODO: If file doesn't exist create it
 
         #get associated key for this file
-        fileKeychain = GDCCryptoClient.getKey(path+'/'+fn)
-        fileKeychain = GDCCryptoClient.getKey(path+'/'+fn)
+        fileKeychain = GDCCryptoClient.getKey(pwd + fn)
+        fileKeychain = GDCCryptoClient.getKey(pwd + fn)
         if not fileKeychain:
             #request keyfile
-            encryptedKeychainFn = GDCCryptoClient.encryptName(path + '/' + kcFn, userKeychain)
-            encryptedPath = self.wd.encrypted_pwd()
-            secureKeyfileContent = GDCHTTPClient.sendReadRequest(encryptedPath + '/' + encryptedKeychainFn)
-            fileKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, path + '/' + kcFn)
+            encryptedKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
+            encryptedPwd = self.wd.encrypted_pwd()
+            secureKeyfileContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedKeychainFn)
+            fileKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, pwd + kcFn)
 
         #encrypt file's new contents
         encryptedContent = GDCCryptoClient.encryptFile(content, fileKeychain)
 
         #craft write request to server
-        encryptedFn = GDCCryptoClient.encryptName(path + '/' + fn, fileKeychain)
-        encryptedPath = self.wd.encrypted_pwd()
+        encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(pwd + fn, fileKeychain))
+        encryptedPwd = self.wd.encrypted_pwd()
 
-        GDCHTTPClient.sendWriteRequest(encryptedPath + '/' + encryptedFn,
+        GDCHTTPClient.sendWriteRequest(encryptedPwd + encryptedFn,
                                          encryptedContent)
 
         return name + " written"
@@ -352,24 +328,26 @@ class DCClient:
     def deleteFile(self, fn):
         print "deleteFile"
         kcFn = keychainFn(fn, self.username)
-        path = self.wd.pwd()
+        pwd = self.wd.pwd()
+        encryptedPwd = self.wd.encrypted_pwd()
 
-        fileKeychain = GDCCryptoClient.getKey(path+'/'+fn)
-
+        fileKeychain = GDCCryptoClient.getKey(pwd+fn)
+        encryptedFileKeychainFn = None
         if not fileKeychain:
-            userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+            userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
             #------- request to delete key file ----------
             #get encrypted keyfile name
-            encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(path + '/' + kcFn, userKeychain))
+            encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
 
             #request keyfile
-            secureKeychainContent = GDCHTTPClient.sendReadRequest(self.wd.encrypted_pwd() + '/' + encryptedFileKeychainFn)
+            secureKeychainContent = GDCHTTPClient.sendReadRequest(self.wd.encrypted_pwd() + encryptedFileKeychainFn)
 
             #construct key object
             fileKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd, path+'/'+kcFn)
 
         #request encrypted file using encrypted file name
-        encryptedFn = nameDecorator(fn, self.cryptClient.encryptName(path + '/' + fn, fileKeychain))
+
+        encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(pwd + fn, fileKeychain))
 
         parentDn = self.wd.up(1)
         if parentDn:
@@ -377,63 +355,55 @@ class DCClient:
             # Initialize dcdir with: parentDn, pwd, encrypted_pwd, parentDirKeychain
             dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), parentDirKeychain)
             # 
+            if not encryptedFileKeychainFn:
+                userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
+                encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
             dcdir.unregisterFile(encryptedFn, encryptedFileKeychainFn)
             self.wd.down(parentDn)
 
-        # # *** BEGIN: Replaced with DCDir implementation above ***
-        #     # -- request to change parent directory structure --
-        #     #request to read parent directory contents to add new directory
-        #     parentName = self.wd.up(1) # returns name of directory after the last slash
-        #     dirObj = readSecureDirObj(parentName)
-        #     dirObj.remove(encryptedKeyName, kfname)
-        #     dirObj.remove(encryptedName, name)
-        #     dirObj.sort()
-
-        #     #request to write the modified directory
-        #     self.write(parentName, dirObj.content(), True)
-
-        #     self.wd.down(parentName)
-        # # --- END ---
-
         #---------- request to delete file -----------
         #delete keyfile
-        GDCHTTPClient.sendDeleteRequest(encryptedPath + '/' + encryptedFileKeychainFn)
+        GDCHTTPClient.sendDeleteRequest(encryptedPwd + encryptedFileKeychainFn)
 
         #delete file
-        GDCHTTPClient.sendDeleteRequest(encryptedPath + '/' + encryptedFn)
+        GDCHTTPClient.sendDeleteRequest(encryptedPwd + encryptedFn)
 
         return
 
     # rmdir => dirs only
-    def rmdir(self, args):
+    def rmdir(self, dn):
         print "rmdir"
-        dn = args[0]
         kcFn = keychainFn(dn, self.username)
-        lsFn = nameTo_lsFn(name)
-        path = self.wd.pwd()
+        lsFn = nameTo_lsFn(dn)
+        pwd = self.wd.pwd()
+        encryptedPwd = self.wd.encrypted_pwd()
 
-        dirKeychain = GDCCryptoClient.getKey(path+'/'+dn)
+        dirKeychain = GDCCryptoClient.getKey(pwd + dn)
+
+        encryptedDirKeychainFn = None
 
         if not dirKeychain:
-            userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
+            userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
 
             #------- request to delete key directory ----------
             #get encrypted keyfile name
-            encryptedKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(path + '/' + kcFn, userKeychain))
-            encryptedPath = self.wd.encrypted_pwd()
+            encryptedDirKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
 
             #request keyfile
-            secureKeyfileContent = GDCHTTPClient.sendReadRequest(encryptedPath + '/' + encryptedKeychainFn)
+            secureKeyfileContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedDirKeychainFn)
 
             #construct key object
-            dirKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, path+'/'+kcFn)
+            dirKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, pwd + kcFn)
 
         #request encrypted file using encrypted file name
-        encryptedDn = nameDecorator(dn, GDCCryptoClient.encryptName(path + '/' + dn, dirKeychain))
-        encrypted_lsFn = lsDecorator(dn, GDCCryptoClient.encryptName(path + '/' + lsFn, dirKeychain))
+        encryptedDn = nameDecorator(dn, GDCCryptoClient.encryptName(pwd + dn, dirKeychain))
+        encrypted_lsFn = lsDecorator(dn, GDCCryptoClient.encryptName(pwd + lsFn, dirKeychain))
 
         parentDn = self.wd.up(1)
         if parentDn:
+            if not encryptedDirKeychainFn:
+                userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
+                encryptedDirKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
             parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.passwd, parentDn, self.wd.pwd(),self.wd.encrypted_pwd())
             # Initialize dcdir with: parentDn, pwd, encrypted_pwd, parentDirKeychain
             dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), parentDirKeychain)
@@ -461,13 +431,13 @@ class DCClient:
 
         #---------- request to delete directory -----------
         #delete keyfile
-        GDCHTTPClient.sendDeleteRequest(encryptedPath + '/' + encryptedKeychainFn)
+        GDCHTTPClient.sendDeleteRequest(encryptedPwd + encryptedDirKeychainFn)
 
         #delete file
-        GDCHTTPClient.sendDeleteRequest(encryptedPath + '/' + encryptedDn)
+        GDCHTTPClient.sendDeleteRequest(encryptedPwd + encryptedDn)
 
         #delete ls file
-        GDCHTTPClient.sendDeleteRequest(encryptedPath + '/' + encrypted_lsFn)
+        GDCHTTPClient.sendDeleteRequest(encryptedPwd + encrypted_lsFn)
 
         return
 
@@ -475,44 +445,49 @@ class DCClient:
         print "rename"
         kcFn = keychainFn(name, self.username)
         newKcFn = keychainFn(newName, self.username)
-        lsFn = lsFilename(name)
-        new_lsFn = lsFilename(newName)
-        path = self.wd.pwd()
-        encryptedPath = self.wd.encrypted_pwd()
+        lsFn = nameTo_lsFn(name)
+        new_lsFn = nameTo_lsFn(newName)
+        pwd = self.wd.pwd()
+        encryptedPwd = self.wd.encrypted_pwd()
 
-        keychain = GDCCryptoClient.getKey(path+'/'+name)
+        keychain = GDCCryptoClient.getKey(pwd + name)
+        encryptedKeychainFn = None
         if not keychain:
-            userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
-            encryptedKeychainFn = keychainDecorator(name, GDCCryptoClient.encryptName(path + '/' + kcFn, userKeychain))
+            userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
+            encryptedKeychainFn = keychainDecorator(name, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
             #request keyfile
-            secureKeychainContent = GDCHTTPClient.sendReadRequest(encryptedPath + '/' + encryptedKeychainFn)
+            secureKeychainContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedKeychainFn)
             #construct key object
-            keychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd, path+'/'+kcFn)
+            keychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd, pwd + kcFn)
         
 
-        newUserKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + newKcFn)
+        newUserKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + newKcFn)
 
         #get encrypted keyfile name
-        newEncryptedKeychainFn = keychainDecorator(newName, GDCCryptoClient.encryptName(path + '/' + newKcFn, newUserKeychain))
+        newEncryptedKeychainFn = keychainDecorator(newName, GDCCryptoClient.encryptName(pwd + newKcFn, newUserKeychain))
 
         #request encrypted file using encrypted file name
-        encryptedName = nameDecorator(name, GDCCryptoClient.encryptName(path + '/' + name, keychain))
-        newEncryptedName = nameDecorator(newName, GDCCryptoClient.encryptName(path + '/' + newName, keychain))
+        encryptedName = nameDecorator(name, GDCCryptoClient.encryptName(pwd + name, keychain))
+        newEncryptedName = nameDecorator(newName, GDCCryptoClient.encryptName(pwd + newName, keychain))
         encrypted_lsFn = None
         newEncrypted_lsFn = None
+        print 'isDir? : ' + str(isDir)
         if isDir:
-            encrypted_lsFn = lsDecorator(name, GDCCryptoClient.encryptName(path + '/' + lsFn, keychain))
-            newEncrypted_lsFn = lsDecorator(newName, GDCCryptoClient.encryptName(path + '/' + new_lsFn, keychain))
+            encrypted_lsFn = lsDecorator(name, GDCCryptoClient.encryptName(pwd + lsFn, keychain))
+            newEncrypted_lsFn = lsDecorator(newName, GDCCryptoClient.encryptName(pwd + new_lsFn, keychain))
 
         parentDn = self.wd.up(1)
         if parentDn:
             parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.passwd, parentDn, self.wd.pwd(),self.wd.encrypted_pwd())
             # Initialize dcdir with: parentDn, pwd, encrypted_pwd, parentDirKeychain
-            dcdir = DCDir(parentDn, self.wd.pwd(), parentDirEncryptedPath, parentDirKeychain)
-            
+            dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), parentDirKeychain)
+            if not encryptedKeychainFn:
+                    userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
+                    encryptedKeychainFn = keychainDecorator(name, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
             if isDir: # renaming a dir
                 # Unregisted encryptedDn, encryptedKeychainFn, encrypted_lsFn
-                dcdir.unregisterDir(encryptedName, encryptedPath)
+
+                dcdir.unregisterDir(encryptedName, encrypted_lsFn, encryptedKeychainFn)
                 # Register newEncryptedDn, newPlaintextDn, newEncryptedKeychainFn, newPlaintextKeychainFn, newEncrypted_lsFn, new_lsFn httpClient
                 dcdir.registerDir(newEncryptedName, newName, newEncryptedKeychainFn, newKcFn, newEncrypted_lsFn, new_lsFn)
             else: # renaming a file
@@ -522,37 +497,14 @@ class DCClient:
                 dcdir.registerFile(newEncryptedName, newName, newEncryptedKeychainFn, newKcFn)
             self.wd.down(parentDn)
 
-
-        # # *** BEGIN Replaced with DCDir implementation above ***
-
-        #     # -- request to change parent directory structure --
-        #     #request to read parent directory contents to add new directory
-        #     parentName = self.wd.up(1) # returns name of directory after the last slash
-        #     dirObj = readSecureDirObj(parentName)
-        #     dirObj.remove(encryptedKeyName, kfname)
-        #     dirObj.remove(encryptedName, name)
-        #     dirObj.add(newEncryptedFileName, newName)
-        #     dirObj.add(newEncryptedKeyName, newKFName)
-        #     if isDir:
-        #         dirObj.remove(encryptedLSFileName, lsname)
-        #         dirObj.add(newEncryptedLSFileName, newLSName)
-        #     dirObj.sort()
-
-        #     #request to write the modified directory
-        #     self.write(parentName, dirObj.content(), True)
-
-        #     self.wd.down(parentName)
-
-        # # --- END ---
-
         # -------- set new names -------------------
-        GDCHTTPClient.sendReadRequest(encryptedPath + '/' + encryptedName,
-                                        encryptedPath + '/' + newEncryptedName)
-        GDCHTTPClient.sendReadRequest(encryptedPath + '/' + encryptedKeychainFn,
-                                        encryptedPath + '/' + newEncryptedKeychainFn)
+        GDCHTTPClient.sendRenameRequest(encryptedPwd + encryptedName,
+                                        encryptedPwd + newEncryptedName)
+        GDCHTTPClient.sendRenameRequest(encryptedPwd + encryptedKeychainFn,
+                                        encryptedPwd + newEncryptedKeychainFn)
         if isDir:
-            GDCHTTPClient.sendReadRequest(encryptedPath + '/' + encrypted_lsFn,
-                                            encryptedPath + '/' + newEncrypted_lsFn)
+            GDCHTTPClient.sendRenameRequest(encryptedPwd + encrypted_lsFn,
+                                            encryptedPwd + newEncrypted_lsFn)
 
 # -------------------------------
 
@@ -563,7 +515,7 @@ class DCWorkingDirectory:
     def __init__(self, username, password):
         self.username = username
         self.password = password
-        self.directoryStack = [username]
+        self.directoryStack = []
 
     def encryptedRoot(self):
         kcFn = keychainFn(self.username, self.username)
@@ -580,39 +532,44 @@ class DCWorkingDirectory:
         return encryptedRoot
 
     def up(self,steps=1):
+
         newWD = None
         for i in xrange(0, steps):
             if len(self.directoryStack) > 0:
                 newWD = self.directoryStack.pop()
             else:
-                if newWD != None:
-                    return newWD
-                else:
-                    return '/'
+                return '/'
+        return newWD
 
     def down(self,subdirectory):
         self.directoryStack.append(subdirectory)
 
     def path(self,directories):
         #print "path: " + self.currentRoot + '/'.join(directories)
-        return '/'.join(directories)
+        if len(directories) == 0:
+            return '/'
+        else:
+            return '/' + '/'.join(directories) + '/'
 
     def pwd(self):
         return self.path(self.directoryStack)
 
     def encrypted_pwd(self):
+        print "encrypting pwd: " + self.pwd()
+        print "saved keychains: " + repr(GDCCryptoClient.pathsToKeys)
         encrypted_pwd = []
         for i in range(0,len(self.directoryStack)):
-            dirname = self.directoryStack[0]
-            path = self.path(self.directoryStack[:i])
+            dirname = self.directoryStack[i]
+            path = self.path(self.directoryStack[:i]) + dirname
             # see if we can get the encrypted name without querying the server
+            print 'path: '+path
             dirKey = GDCCryptoClient.getKey(path)
             if not dirKey:
                raise ValueError("cd'ing through multiple directories at once is not yet implemented. Must manually cd through them.")
 
             # encrypt dirname with key            
-            encryptedDirname = GDCCryptoClient.encryptName(dirname, dirKey)
-            encrypted_pwd.append(encryptedDirname)
+            encryptedDirname = GDCCryptoClient.encryptName(path, dirKey)
+            encrypted_pwd.append(nameDecorator(dirname, encryptedDirname))
         return self.path(encrypted_pwd)
 
 # -----------------------------------
@@ -632,9 +589,11 @@ class DCDir:
     def addFile_lsEntry(lsFile, plaintextFn, encryptedFn):
         # Entry looks as follows: 
         #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
+        print "Adding dir entry: lsFile:%s, ptFn:%s, eFn:%s" % (lsFile, plaintextFn, encryptedFn)
+
         ptFnLength = len(plaintextFn)
-        encFnLength = len(encryptedFn)
-        lengthlessEntry = 'fn,' + str(ptFnLength) + ',' + str(encFnLength) + ',' + plaintextFn + ',' + encryptedFn + ';'
+        encFnLength = len(urllib.quote(encryptedFn))
+        lengthlessEntry = 'fn,' + str(ptFnLength) + ',' + str(encFnLength) + ',' + plaintextFn + ',' + urllib.quote(encryptedFn) + ';'
         entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
         entry = str(entryLength) + ',' + lengthlessEntry
         return lsFile + entry
@@ -645,8 +604,11 @@ class DCDir:
         updated_lsFile = None
         while offset < len(lsFile):
             entry, newOffset = DCDir.readEntry(lsFile, offset)
+            print "Entry encrypted name: " + entry.encryptedName
+            print "matches query: %s?" % encryptedFn
             if entry.isFile and (entry.encryptedName == encryptedFn):
                 #remove entry
+                print "Entry removed!"
                 updated_lsFile = lsFile[:offset] + lsFile[newOffset:]
             offset = newOffset
         return updated_lsFile
@@ -657,11 +619,12 @@ class DCDir:
     def addDir_lsEntry(lsFile, plaintextDn, encryptedDn):
         # Entry looks as follows: 
         #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
+        print "Adding dir entry: lsFile:%s, ptDn:%s, eDn:%s" % (lsFile, plaintextDn, encryptedDn)
         ptDnLength = len(plaintextDn)
-        encDnLength = len(encryptedDn)
-        lengthLessentry = 'dn,' + str(ptDnLength) + ',' + str(encDnLength) + ',' + plaintextDn + ',' + encryptedDn + ';'
+        encDnLength = len(urllib.quote(encryptedDn))
+        lengthlessEntry = 'dn,' + str(ptDnLength) + ',' + str(encDnLength) + ',' + plaintextDn + ',' + urllib.quote(encryptedDn) + ';'
         entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
-        entry = entryLength + ',' + lengthlessEntry
+        entry = str(entryLength) + ',' + lengthlessEntry
         return lsFile + entry
         
 
@@ -671,8 +634,12 @@ class DCDir:
         updated_lsFile = None
         while offset < len(lsFile):
             entry, newOffset = DCDir.readEntry(lsFile, offset)
-            if entry.isDir and (entry.encryptedName == encryptedFn):
+            print "Entry encrypted name: " + entry.encryptedName
+            print "matches query: %s?" % encryptedDn
+            print "entry is dir? : " + str(entry.isDir)
+            if entry.isDir and (entry.encryptedName == encryptedDn):
                 #remove entry
+                print "Entry removed!"
                 updated_lsFile = lsFile[:offset] + lsFile[newOffset:]
             offset = newOffset
         return updated_lsFile
@@ -697,6 +664,7 @@ class DCDir:
             else:
                 commaCount +=1
                 if commaCount == 2: # currently building fn/dn
+                    print "stringBuilder found: " + stringBuilder
                     if stringBuilder == 'fn':
                         isFile = True
                     elif stringBuilder == 'dn':
@@ -721,15 +689,18 @@ class DCDir:
 
     @staticmethod
     def verifiedDirKeychain(username, password, dn, pwd, encrypted_pwd):
+        kcFn = keychainFn(dn, username)
         print "verifiedDirKeychain"
-        userKeychain = GDCCryptoClient.createUserMasterKeyObj(username, password,  pwd+'/'+dn)
+        print '*** pwd: %s, encrypted_pwd:%s, dn: %s' % (pwd, encrypted_pwd, dn)
+        userKeychain = GDCCryptoClient.createUserMasterKeyObj(username, password,  pwd + kcFn)
         # Get encrypted dirKeychainFn name
-        encryptedDirKeychainFn = GDCCryptoClient.encryptName(keychainFn(dn, username), userKeychain)
+        encryptedDirKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
         # Query server for secure dirKeychain
-        secureDirKeychain = GDCHTTPClient.sendReadRequest(encrypted_pwd +'/' +keychainDecorator(dn,encryptedDirKeychainFn))
+        print "READ REQUEST: encrypted_pwd:%s, encryptedDirKeychainFn:%s" % (encrypted_pwd, keychainDecorator(dn,urllib.quote(encryptedDirKeychainFn)))
+        secureDirKeychain = GDCHTTPClient.sendReadRequest(encrypted_pwd + encryptedDirKeychainFn)
         # Unlock dirKeychain and return it
         # secureKeyFileData, username, password, keyFileName
-        return GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureDirKeychain, username, password, pwd+'/'+dn)
+        return GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureDirKeychain, username, password, pwd + kcFn)
 
     @staticmethod
     def sorted_lsEntries(lsFile):
@@ -740,7 +711,7 @@ class DCDir:
             entries.append(entry)
             offset = newOffset
         # Sort by encrypted entry names
-        sorted_entries = sorted(entries, key=lambda entry: entry.encrytedName)
+        sorted_entries = sorted(entries, key=lambda entry: entry.encryptedName)
         # Sorted lsFile construction
         return ''.join([str(sorted_entry) for sorted_entry in sorted_entries])
 
@@ -773,24 +744,24 @@ class DCDir:
 
     # *** Instance methods ***
 
-    def __init__(self, dn, encryptedDirpath, dirKeychain): # how should this be initialized
+    def __init__(self, dn, pwd, encryptedPwd, dirKeychain): # how should this be initialized
         self.dn = dn
         self.encryptedDirname = GDCCryptoClient.encryptName(dn, dirKeychain)
-        self.encryptedDirpath = encryptedDirpath
+        self.encryptedPwd = encryptedPwd
         self.lsFn = DCDir.nameTo_lsFn(dn)
-        self.encrypted_lsFn = GDCCryptoClient.encryptName(self.lsFn, dirKeychain)
+        self.encrypted_lsFn = GDCCryptoClient.encryptName(pwd + self.lsFn, dirKeychain)
         self.dirKeychain = dirKeychain
     
-    def fullEncryptedPath(name):
-        full_enc_path = self.encryptedDirpath + '/' + name
-        print "full_enc_path: " + full_enc_path 
+    def fullEncryptedPath(self, name):
+        full_enc_path = self.encryptedPwd + name
+        print "full_enc_path: " + urllib.quote(full_enc_path)
         return full_enc_path
 
     # Add file to directory ls file
-    def registerFile(encryptedFn, plaintextFn, encryptedFileKeychainFn, plaintextFileKeychainFn):
+    def registerFile(self,encryptedFn, plaintextFn, encryptedFileKeychainFn, plaintextFileKeychainFn):
         #TODO: unlock & lock? or method for this in cryptclient
         # - Query server for secure ls file
-        secure_lsFile = GDCHTTPClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
+        secure_lsFile = GDCHTTPClient.sendReadRequest(self.fullEncryptedPath(lsDecorator(self.dn ,self.encrypted_lsFn)))
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file with new filename and fileKeychain filename (plaintext & encrypted name)
@@ -799,59 +770,64 @@ class DCDir:
         # -Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_file_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
+        print "lsFile after add file and sorting: " + updatedSorted_lsFile
         updatedSecure_lsFile = self.dirKeychain.lock(updatedSorted_lsFile)
         # - Query server to overwrite secure ls file
-        return GDCHTTPClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
+        return GDCHTTPClient.sendWriteRequest(self.fullEncryptedPath(lsDecorator(self.dn,self.encrypted_lsFn)), updatedSecure_lsFile)
 
     # Remove file from directory ls file
-    def unregisterFile(encryptedFn, encryptedFileKeychainFn):
+    def unregisterFile(self,encryptedFn, encryptedFileKeychainFn):
         # - Query server for secure ls file
-        secure_lsFile = GDCHTTPClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
+        secure_lsFile = GDCHTTPClient.sendReadRequest(self.fullEncryptedPath(lsDecorator(self.dn,self.encrypted_lsFn)))
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
+        print "lsFile: "+ lsFile
         # - Update ls file by removing filename and fileKeychain name (plaintext & encrypted name)
-        lsFile_file = DCDir.removeFile_lsEntry(lsFile, encryptedFn)
-        lsFile_file_keychain = DCDir.removeFile_lsEntry(lsFile_file, encryptedFileKeychainFn)
+        lsFile_file = DCDir.removeFile_lsEntry(lsFile, urllib.quote(encryptedFn))
+        print "lsFile_file: "+lsFile_file
+        lsFile_file_keychain = DCDir.removeFile_lsEntry(lsFile_file, urllib.quote(encryptedFileKeychainFn))
         # - Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_file_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
         updatedSecure_lsFile = self.dirKeychain.lock(updatedSorted_lsFile)
         # - Query server to overwrite secure ls file
-        return GDCHTTPClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
+        return GDCHTTPClient.sendWriteRequest(self.fullEncryptedPath(lsDecorator(self.dn, self.encrypted_lsFn)), updatedSecure_lsFile)
 
     # Add dir to directory ls file
-    def registerDir(encryptedDn, plaintextDn, encrypted_lsFn, plaintext_lsFn, encryptedDirKeychainFn, plaintextDirKeychainFn):
+    def registerDir(self,encryptedDn, plaintextDn, encrypted_lsFn, plaintext_lsFn, encryptedDirKeychainFn, plaintextDirKeychainFn):
         # - Query server for secure ls file
-        secure_lsFile = GDCHTTPClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
+        secure_lsFile = GDCHTTPClient.sendReadRequest(self.fullEncryptedPath(lsDecorator(self.dn, self.encrypted_lsFn)))
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file with new filename and fileKeychain filename (plaintext & encrypted name)
         lsFile_dir = DCDir.addDir_lsEntry(lsFile, plaintextDn, encryptedDn)
         lsFile_dir_ls = DCDir.addFile_lsEntry(lsFile_dir, plaintext_lsFn, encrypted_lsFn)
         lsFile_dir_ls_keychain = DCDir.addFile_lsEntry(lsFile_dir_ls, plaintextDirKeychainFn, encryptedDirKeychainFn)
+        print "updated lsFile after added dir: " + lsFile_dir_ls_keychain
         # - Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_dir_ls_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
+        print "after sorting: " + updatedSorted_lsFile
         updatedSecure_lsFile = self.dirKeychain.lock(updatedSorted_lsFile)
         # - Query server to overwrite secure ls file
-        return GDCHTTPClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
+        return GDCHTTPClient.sendWriteRequest(self.fullEncryptedPath(lsDecorator(self.dn, self.encrypted_lsFn)), updatedSecure_lsFile)
 
     # Remove dir from directory ls file
-    def unregisterDir(encryptedDn, encrypted_lsFn, encryptedDirKeychainFn):
+    def unregisterDir(self,encryptedDn, encrypted_lsFn, encryptedDirKeychainFn):
         # - Query server for secure ls file
-        secure_lsFile = GDCHTTPClient.sendReadRequest(self.fullEncryptedPath(self.encrypted_lsFn))
+        secure_lsFile = GDCHTTPClient.sendReadRequest(self.fullEncryptedPath(lsDecorator(self.dn, self.encrypted_lsFn)))
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file by removing dirname, dir_lsFile and dirKeychain filename (plaintext & encrypted name)
-        lsFile_dir = DCDir.removeDir_lsEntry(lsFile, encryptedDn)
-        lsFile_dir_ls = DCDir.removeFile_lsEntry(lsFile_dir, encrypted_lsFn)
-        lsFile_dir_ls_keychain = DCDir.removeFile_lsEntry(lsFile_dir_ls, encryptedDirKeychainFn)
+        lsFile_dir = DCDir.removeDir_lsEntry(lsFile, urllib.quote(encryptedDn))
+        lsFile_dir_ls = DCDir.removeFile_lsEntry(lsFile_dir, urllib.quote(encrypted_lsFn))
+        lsFile_dir_ls_keychain = DCDir.removeFile_lsEntry(lsFile_dir_ls, urllib.quote(encryptedDirKeychainFn))
         # - Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_dir_ls_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
         updatedSecure_lsFile = self.dirKeychain.lock(updatedSorted_lsFile)
         # - Query server to overwrite secure ls file
-        return GDCHTTPClient.sendWriteRequest(self.fullEncryptedPath(self.encrypted_lsFn), updatedSecure_lsFile)
+        return GDCHTTPClient.sendWriteRequest(self.fullEncryptedPath(lsDecorator(self.dn, self.encrypted_lsFn)), updatedSecure_lsFile)
 
 # -------------------------------------
 
@@ -875,7 +851,7 @@ class DClsEntry:
             fnSlashDn = 'dn'
         ptNameLength = len(self.plaintextName)
         encNameLength = len(self.encryptedName)
-        lengthlessEntry = 'fn,' + str(ptNameLength) + ',' + str(encNameLength) + ',' + self.plaintextName + ',' + self.encryptedName + ';'
+        lengthlessEntry = fnSlashDn + ',' + str(ptNameLength) + ',' + str(encNameLength) + ',' + self.plaintextName + ',' + self.encryptedName + ';'
         entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
         entry = str(entryLength) + ',' + lengthlessEntry
         return entry
@@ -888,6 +864,7 @@ class DClsEntry:
 
 def run():
     client = DarkCloudClient()
+    print "Correct DCClient implementation"
     try:
         while True:
             cmd_str = raw_input(prompt)

@@ -5,6 +5,8 @@ import subprocess
 import shlex
 import sys
 import re
+import shutil
+import smtplib
 
 prompt = "DarkCloud >>> "
 
@@ -13,6 +15,25 @@ class CommandError(Exception):
 
 def isUnsanitizedName(name):
     return re.match("\..*|\.kc-.*|\.ls-.*", name)
+
+def sendFileOverSecureChannel(content):
+    fromaddr = raw_input('Please enter your gmail: ')
+    password = getpass.getpass()
+    toaddrs  = raw_input('Please enter email address of person you wish to share with: ')
+    msg = content
+      
+      
+    # Credentials (if needed)  
+    username = fromaddr
+      
+    # The actual mail send  
+    server = smtplib.SMTP('smtp.gmail.com:587')  
+    server.ehlo()
+    server.starttls()
+    server.ehlo()
+    server.login(username,password)  
+    server.sendmail(fromaddr, toaddrs, msg)  
+    server.quit() 
 
 class DCClientParser:
     """docstring for DarkCloudClientParser"""
@@ -29,6 +50,7 @@ class DCClientParser:
             'read': self.read,
             'write': self.write,
             'rename': self.rename,
+            'renamedir': self.renamedir,
             'login': self.login,
             'logout': self.logout,
             'mkdir': self.mkdir,
@@ -39,6 +61,8 @@ class DCClientParser:
             'cd': self.cd,
             'vim': self.vim,
             'register': self.register,
+            'pwd': self.pwd,
+            'share': self.share,
             'readFiles': self.showReadFiles #maybe
         }
         
@@ -86,7 +110,7 @@ class DCClientParser:
             print "Invalid file name."
             return
 
-        self.dcClient.delete(name)
+        self.dcClient.deleteFile(name)
         print "delete ", name
         print "Deleted file: ", name
 
@@ -100,7 +124,7 @@ class DCClientParser:
             return
 
         print "Reading file: " + name + " ..."
-        content = self.dcClient.read(name)
+        content = self.dcClient.readFile(name)
         content = "test"
         with open('tmp/' + name, 'w') as fd:
             return fd.write(content)
@@ -128,6 +152,18 @@ class DCClientParser:
             print "Invalid file name."
             return
         self.dcClient.rename(name, newName)
+        print "rename", name, newName
+
+    def renamedir(self, args):
+        if len(args) != 3:
+            print "Incorrect number of arguments\nUsage: read filename"
+            return
+        name = args[1]
+        newName = args[2]
+        if isUnsanitizedName(name) or isUnsanitizedName(newName):
+            print "Invalid file name."
+            return
+        self.dcClient.rename(name, newName, True)
         print "rename", name, newName
 
     def mkdir(self, args):
@@ -171,6 +207,18 @@ class DCClientParser:
             return
         else:
             self.dcClient.wd.down(name)
+
+    def pwd(self, args):
+        if len(args) != 1:
+            print "Incorrect number of arguments\n Print working dir."
+            return
+        print self.dcClient.wd.pwd()
+
+    def share(self, args):
+        if len(args) != 2:
+            print "Incorrect number of arguments\n Print working dir."
+            return
+        sendFileOverSecureChannel("hello")
 
     def vim(self, args):
         if len(args) != 2:
@@ -245,7 +293,8 @@ def run():
             parser.run_command(cmd, args)
     except EOFError:
         print "\nEnded Session"
-    subprocess.call('touch foo', shell=True)
+    if os.path.exists("tmp"):
+        shutil.rmtree('tmp')
 
 
 if __name__ == '__main__':

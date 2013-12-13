@@ -4,6 +4,7 @@ import httplib
 import sys
 import json
 import urllib
+import os
 from urllib import urlencode
 
 # *** HTTP methods ***
@@ -42,7 +43,7 @@ class DCHTTPClient():
 		print 'with isDir: ' + str(isDir)
 		if encryptedContents:
 			print 'with encryptedContents: ' + urllib.quote(encryptedContents)
-		url = encryptedPath
+		url = DCHTTPClient.collapseDoubleSlashes(encryptedPath)
 		headers = {'content-length':0, 
 		'query-string':urlencode({Method:Create, File:isFile, Dir:isDir}),
 		'url':url}
@@ -54,7 +55,7 @@ class DCHTTPClient():
 
 	# Read --> GET
 	def sendReadRequest(self, encryptedPath):
-		url = encryptedPath
+		url = DCHTTPClient.collapseDoubleSlashes(encryptedPath)
 		headers = {'content-length':0,'query-string':urlencode({Method:Read}), 'url':url}
 		self.connection.request(GET, '', None, headers)
 		response = self.connection.getresponse().read()
@@ -68,7 +69,7 @@ class DCHTTPClient():
 
 	# Write --> POST
 	def sendWriteRequest(self, encryptedPath, newEncryptedContents):
-		url = encryptedPath
+		url = DCHTTPClient.collapseDoubleSlashes(encryptedPath)
 		headers = {'content-length':len(newEncryptedContents), 'query-string':urlencode({Method:Write}),
 		'url':url}
 		self.connection.request(POST, '', newEncryptedContents, headers)
@@ -76,17 +77,26 @@ class DCHTTPClient():
 
 	# Rename --> POST
 	def sendRenameRequest(self, encryptedPath, newEncryptedPath):
-		url = encryptedPath
-		headers = {'content-length':0,'query-string':urlencode({Method:Rename}), 'url':url}
+		url = DCHTTPClient.collapseDoubleSlashes(encryptedPath)
+		headers = {'content-length':len(newEncryptedPath),'query-string':urlencode({Method:Rename}), 'url':url}
 		self.connection.request(POST, '', newEncryptedPath, headers)
 		return self.connection.getresponse().read()
 
 	# Delete --> DELETE
 	def sendDeleteRequest(self, encryptedPath):
-		url = encryptedPath
+		url = DCHTTPClient.collapseDoubleSlashes(encryptedPath)
 		headers = {'content-length':0,'query-string':urlencode({Method:Delete}), 'url':url}
 		self.connection.request(DELETE, '', None, headers)
 		return self.connection.getresponse().read()
+
+	@staticmethod
+	def collapseDoubleSlashes(url):
+		if url[:2] == '//':
+			print "collapsed url: "+ url[1:]
+			return url[1:]
+		else:
+			print "uncollapsed url: "+url
+			return url
 
 # ----------------------------------
 
@@ -95,6 +105,7 @@ class DCHTTPClient():
 
 def run():
 	try:
+		print "CORRECT HTTPClient implementation"
 		# ip & port
 		client = DCHTTPClient(sys.argv[1], sys.argv[2])
 		while True:
