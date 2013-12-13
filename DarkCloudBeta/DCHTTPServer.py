@@ -22,7 +22,7 @@ File = 'file'
 Dir = 'dir'
 # -------------------------
 
-DCRoot = 'DCRoot/'
+DCRoot = 'DCRoot'
 
 class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 	# *** 'Overridden' methods ***
@@ -119,7 +119,8 @@ class DCHTTPRequestHandler(BaseHTTPRequestHandler):
 			return
 
 	def tmpPath(self, encryptedPath):
-		print "absolute path: "+ DCRoot + encryptedPath
+		print "root: %s, encryptedPath: %s " % (DCRoot, encryptedPath)
+		print "tmpPath = " + DCRoot + encryptedPath
 		return DCRoot + encryptedPath
 
 	# def parseURL(self):
