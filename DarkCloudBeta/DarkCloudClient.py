@@ -332,7 +332,7 @@ class DCClient:
         encryptedPwd = self.wd.encrypted_pwd()
 
         fileKeychain = GDCCryptoClient.getKey(pwd+fn)
-
+        encryptedFileKeychainFn = None
         if not fileKeychain:
             userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
             #------- request to delete key file ----------
@@ -355,6 +355,9 @@ class DCClient:
             # Initialize dcdir with: parentDn, pwd, encrypted_pwd, parentDirKeychain
             dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), parentDirKeychain)
             # 
+            if not encryptedFileKeychainFn:
+                userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
+                encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
             dcdir.unregisterFile(encryptedFn, encryptedFileKeychainFn)
             self.wd.down(parentDn)
 
@@ -368,25 +371,26 @@ class DCClient:
         return
 
     # rmdir => dirs only
-    def rmdir(self, args):
+    def rmdir(self, dn):
         print "rmdir"
-        dn = args[0]
         kcFn = keychainFn(dn, self.username)
-        lsFn = nameTo_lsFn(name)
+        lsFn = nameTo_lsFn(dn)
         pwd = self.wd.pwd()
+        encryptedPwd = self.wd.encrypted_pwd()
 
         dirKeychain = GDCCryptoClient.getKey(pwd + dn)
+
+        encryptedDirKeychainFn = None
 
         if not dirKeychain:
             userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
 
             #------- request to delete key directory ----------
             #get encrypted keyfile name
-            encryptedKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
-            encryptedPwd = self.wd.encrypted_pwd()
+            encryptedDirKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
 
             #request keyfile
-            secureKeyfileContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedKeychainFn)
+            secureKeyfileContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedDirKeychainFn)
 
             #construct key object
             dirKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, pwd + kcFn)
@@ -397,6 +401,9 @@ class DCClient:
 
         parentDn = self.wd.up(1)
         if parentDn:
+            if not encryptedDirKeychainFn:
+                userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
+                encryptedDirKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
             parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.passwd, parentDn, self.wd.pwd(),self.wd.encrypted_pwd())
             # Initialize dcdir with: parentDn, pwd, encrypted_pwd, parentDirKeychain
             dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), parentDirKeychain)
@@ -424,7 +431,7 @@ class DCClient:
 
         #---------- request to delete directory -----------
         #delete keyfile
-        GDCHTTPClient.sendDeleteRequest(encryptedPwd + encryptedKeychainFn)
+        GDCHTTPClient.sendDeleteRequest(encryptedPwd + encryptedDirKeychainFn)
 
         #delete file
         GDCHTTPClient.sendDeleteRequest(encryptedPwd + encryptedDn)
@@ -600,6 +607,8 @@ class DCDir:
     def addFile_lsEntry(lsFile, plaintextFn, encryptedFn):
         # Entry looks as follows: 
         #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
+        print "Adding dir entry: lsFile:%s, ptFn:%s, eFn:%s" % (lsFile, plaintextFn, encryptedFn)
+
         ptFnLength = len(plaintextFn)
         encFnLength = len(urllib.quote(encryptedFn))
         lengthlessEntry = 'fn,' + str(ptFnLength) + ',' + str(encFnLength) + ',' + plaintextFn + ',' + urllib.quote(encryptedFn) + ';'
@@ -613,8 +622,11 @@ class DCDir:
         updated_lsFile = None
         while offset < len(lsFile):
             entry, newOffset = DCDir.readEntry(lsFile, offset)
+            print "Entry encrypted name: " + entry.encryptedName
+            print "matches query: %s?" % encryptedFn
             if entry.isFile and (entry.encryptedName == encryptedFn):
                 #remove entry
+                print "Entry removed!"
                 updated_lsFile = lsFile[:offset] + lsFile[newOffset:]
             offset = newOffset
         return updated_lsFile
@@ -625,6 +637,7 @@ class DCDir:
     def addDir_lsEntry(lsFile, plaintextDn, encryptedDn):
         # Entry looks as follows: 
         #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
+        print "Adding dir entry: lsFile:%s, ptDn:%s, eDn:%s" % (lsFile, plaintextDn, encryptedDn)
         ptDnLength = len(plaintextDn)
         encDnLength = len(urllib.quote(encryptedDn))
         lengthlessEntry = 'dn,' + str(ptDnLength) + ',' + str(encDnLength) + ',' + plaintextDn + ',' + urllib.quote(encryptedDn) + ';'
@@ -639,8 +652,12 @@ class DCDir:
         updated_lsFile = None
         while offset < len(lsFile):
             entry, newOffset = DCDir.readEntry(lsFile, offset)
-            if entry.isDir and (entry.encryptedName == encryptedFn):
+            print "Entry encrypted name: " + entry.encryptedName
+            print "matches query: %s?" % encryptedDn
+            print "entry is dir? : " + str(entry.isDir)
+            if entry.isDir and (entry.encryptedName == encryptedDn):
                 #remove entry
+                print "Entry removed!"
                 updated_lsFile = lsFile[:offset] + lsFile[newOffset:]
             offset = newOffset
         return updated_lsFile
@@ -665,6 +682,7 @@ class DCDir:
             else:
                 commaCount +=1
                 if commaCount == 2: # currently building fn/dn
+                    print "stringBuilder found: " + stringBuilder
                     if stringBuilder == 'fn':
                         isFile = True
                     elif stringBuilder == 'dn':
@@ -770,6 +788,7 @@ class DCDir:
         # -Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_file_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
+        print "lsFile after add file and sorting: " + updatedSorted_lsFile
         updatedSecure_lsFile = self.dirKeychain.lock(updatedSorted_lsFile)
         # - Query server to overwrite secure ls file
         return GDCHTTPClient.sendWriteRequest(self.fullEncryptedPath(lsDecorator(self.dn,self.encrypted_lsFn)), updatedSecure_lsFile)
@@ -780,9 +799,11 @@ class DCDir:
         secure_lsFile = GDCHTTPClient.sendReadRequest(self.fullEncryptedPath(lsDecorator(self.dn,self.encrypted_lsFn)))
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
+        print "lsFile: "+ lsFile
         # - Update ls file by removing filename and fileKeychain name (plaintext & encrypted name)
-        lsFile_file = DCDir.removeFile_lsEntry(lsFile, encryptedFn)
-        lsFile_file_keychain = DCDir.removeFile_lsEntry(lsFile_file, encryptedFileKeychainFn)
+        lsFile_file = DCDir.removeFile_lsEntry(lsFile, urllib.quote(encryptedFn))
+        print "lsFile_file: "+lsFile_file
+        lsFile_file_keychain = DCDir.removeFile_lsEntry(lsFile_file, urllib.quote(encryptedFileKeychainFn))
         # - Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_file_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
@@ -800,9 +821,11 @@ class DCDir:
         lsFile_dir = DCDir.addDir_lsEntry(lsFile, plaintextDn, encryptedDn)
         lsFile_dir_ls = DCDir.addFile_lsEntry(lsFile_dir, plaintext_lsFn, encrypted_lsFn)
         lsFile_dir_ls_keychain = DCDir.addFile_lsEntry(lsFile_dir_ls, plaintextDirKeychainFn, encryptedDirKeychainFn)
+        print "updated lsFile after added dir: " + lsFile_dir_ls_keychain
         # - Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_dir_ls_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
+        print "after sorting: " + updatedSorted_lsFile
         updatedSecure_lsFile = self.dirKeychain.lock(updatedSorted_lsFile)
         # - Query server to overwrite secure ls file
         return GDCHTTPClient.sendWriteRequest(self.fullEncryptedPath(lsDecorator(self.dn, self.encrypted_lsFn)), updatedSecure_lsFile)
@@ -814,9 +837,9 @@ class DCDir:
         # - Unlock (decrypt/verify) ls file
         lsFile = self.dirKeychain.unlock(secure_lsFile)
         # - Update ls file by removing dirname, dir_lsFile and dirKeychain filename (plaintext & encrypted name)
-        lsFile_dir = DCDir.removeDir_lsEntry(lsFile, encryptedDn)
-        lsFile_dir_ls = DCDir.removeFile_lsEntry(lsFile_dir, encrypted_lsFn)
-        lsFile_dir_ls_keychain = DCDir.removeFile_lsEntry(lsFile_dir_ls, encryptedDirKeychainFn)
+        lsFile_dir = DCDir.removeDir_lsEntry(lsFile, urllib.quote(encryptedDn))
+        lsFile_dir_ls = DCDir.removeFile_lsEntry(lsFile_dir, urllib.quote(encrypted_lsFn))
+        lsFile_dir_ls_keychain = DCDir.removeFile_lsEntry(lsFile_dir_ls, urllib.quote(encryptedDirKeychainFn))
         # - Sort updated ls file
         updatedSorted_lsFile = DCDir.sorted_lsEntries(lsFile_dir_ls_keychain)
         # - Secure (sign/encrypt) updated, sorted ls file
@@ -846,7 +869,7 @@ class DClsEntry:
             fnSlashDn = 'dn'
         ptNameLength = len(self.plaintextName)
         encNameLength = len(self.encryptedName)
-        lengthlessEntry = 'fn,' + str(ptNameLength) + ',' + str(encNameLength) + ',' + self.plaintextName + ',' + self.encryptedName + ';'
+        lengthlessEntry = fnSlashDn + ',' + str(ptNameLength) + ',' + str(encNameLength) + ',' + self.plaintextName + ',' + self.encryptedName + ';'
         entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
         entry = str(entryLength) + ',' + lengthlessEntry
         return entry

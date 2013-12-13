@@ -109,7 +109,7 @@ class DCClientParser:
             print "Invalid file name."
             return
 
-        self.dcClient.delete(name)
+        self.dcClient.deleteFile(name)
         print "delete ", name
         print "Deleted file: ", name
 
