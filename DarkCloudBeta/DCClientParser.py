@@ -6,6 +6,7 @@ import shlex
 import sys
 import re
 import shutil
+import smtplib
 
 prompt = "DarkCloud >>> "
 
@@ -14,6 +15,25 @@ class CommandError(Exception):
 
 def isUnsanitizedName(name):
     return re.match("\..*|\.kc-.*|\.ls-.*", name)
+
+def sendFileOverSecureChannel(content):
+    fromaddr = raw_input('Please enter your gmail: ')
+    password = getpass.getpass()
+    toaddrs  = raw_input('Please enter email address of person you wish to share with: ')
+    msg = content
+      
+      
+    # Credentials (if needed)  
+    username = fromaddr
+      
+    # The actual mail send  
+    server = smtplib.SMTP('smtp.gmail.com:587')  
+    server.ehlo()
+    server.starttls()
+    server.ehlo()
+    server.login(username,password)  
+    server.sendmail(fromaddr, toaddrs, msg)  
+    server.quit() 
 
 class DCClientParser:
     """docstring for DarkCloudClientParser"""
@@ -41,6 +61,7 @@ class DCClientParser:
             'vim': self.vim,
             'register': self.register,
             'pwd': self.pwd,
+            'share': self.share,
             'readFiles': self.showReadFiles #maybe
         }
         
@@ -179,6 +200,12 @@ class DCClientParser:
             print "Incorrect number of arguments\n Print working dir."
             return
         print self.dcClient.wd.pwd()
+
+    def share(self, args):
+        if len(args) != 2:
+            print "Incorrect number of arguments\n Print working dir."
+            return
+        sendFileOverSecureChannel("hello")
 
     def vim(self, args):
         if len(args) != 2:
