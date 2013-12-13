@@ -95,6 +95,7 @@ class DCHTTPClient():
 
 def run():
 	try:
+		print "CORRECT HTTPClient implementation"
 		# ip & port
 		client = DCHTTPClient(sys.argv[1], sys.argv[2])
 		while True:

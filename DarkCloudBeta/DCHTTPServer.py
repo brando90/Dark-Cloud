@@ -262,6 +262,7 @@ def run():
 		print('Dark Cloud Beta server is starting at host:%s & port:%s' % server_address)
 		httpd = HTTPServer(server_address, DCHTTPRequestHandler)
 		print('Dark Cloud Beta server is now running...')
+		print ('Correct Server implementation')
 		httpd.serve_forever()
 	except EOFError:
 		print '\nServer closed'

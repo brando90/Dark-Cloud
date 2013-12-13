@@ -115,7 +115,7 @@ class DCClient:
 
 
         #request to create key file on server   
-        print "pathToKeys: " + repr(GDCCryptoClient.pathToKeys)     
+        print "pathsToKeys: " + repr(GDCCryptoClient.pathsToKeys)     
         encryptedPath = self.wd.encrypted_pwd() 
         secureKeyContent = fileKeychain.toSecureString(self.username, self.passwd, encryptedPath + '/' + encryptedFileKeychainFn)
         GDCHTTPClient.sendCreateRequest(encryptedPath + '/' + encryptedFileKeychainFn,
@@ -126,7 +126,7 @@ class DCClient:
         #request to create regular file on server
 
         #need to encrypt empty string?
-        secureFileContent = self.cryptClient.encryptFile(content, fileKeychain)
+        secureFileContent = GDCCryptoClient.encryptFile(content, fileKeychain)
         GDCHTTPClient.sendCreateRequest(encryptedPath + '/' +encryptedFn,
                                         True,
                                         False,
@@ -563,7 +563,7 @@ class DCWorkingDirectory:
     def __init__(self, username, password):
         self.username = username
         self.password = password
-        self.directoryStack = [username]
+        self.directoryStack = []
 
     def encryptedRoot(self):
         kcFn = keychainFn(self.username, self.username)
@@ -595,7 +595,7 @@ class DCWorkingDirectory:
 
     def path(self,directories):
         #print "path: " + self.currentRoot + '/'.join(directories)
-        return '/'.join(directories)
+        return '/'+'/'.join(directories)
 
     def pwd(self):
         return self.path(self.directoryStack)
@@ -888,6 +888,7 @@ class DClsEntry:
 
 def run():
     client = DarkCloudClient()
+    print "Correct DCClient implementation"
     try:
         while True:
             cmd_str = raw_input(prompt)

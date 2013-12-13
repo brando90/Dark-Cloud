@@ -150,6 +150,7 @@ class DCCryptoClient:
     def __init__(self):
         #maps name of file to its key object
         self.pathsToKeys = {}
+        print "CORRECT DCCryptoClient"
 
     def addKeyObj(self, pathname, keyObj):
         #adds a key=name maping to value=keyObj to the dictionary
@@ -159,15 +160,15 @@ class DCCryptoClient:
         return self.pathsToKeys.get(pathname)
 
     def encryptName(self, name, keyObj):
-        return keyObj.dcEncrypt(name) 
+        encryptedName = keyObj.dcEncrypt(name) 
+        encryptedNameUnixAccetpableFormat = self.makeStringToAcceptableUnixFormat(encryptedName)
+        return encryptedNameUnixAccetpableFormat
 
     def decryptName(self, encryptname, keyObj):
         return keyObj.dcDecrypt(encryptname)
 
     def encryptFile(self, fileContent, keyObj):
-        encryptedName = keyObj.dcEncrypt(name) 
-        encryptedNameUnixAccetpableFormat = self.makeStringToAcceptableUnixFormat(urllib.quote(encryptedName))
-        return encryptedNameUnixAccetpableFormat
+        return keyObj.lock(fileContent)
 
     def decryptFile(self, secureFileContent, keyObj):
         return keyObj.unlock(secureFileContent)
@@ -216,13 +217,13 @@ class DCCryptoClient:
     def makeStringToAcceptableUnixFormat(self, encryptedName):
         array = []
         length = len(encryptedName)
-        newName = encryptname
+        newName = encryptedName
         for i in range(0,length):
-            c = encryptname[i]
-            if(c == "\0"):
+            c = encryptedName[i]
+            if c == '\0':
                 newName = newName[:i]+"N"+newName[i+1:]
                 array.append(i)
-            elif c == "/":
+            elif c == '/':
                 newName = newName[:i]+"F"+newName[i+1:]
                 array.append(i)
         numberOfSubs = len(array)
@@ -230,9 +231,7 @@ class DCCryptoClient:
             index = array[i]
             newName = str(index)+','+newName
         newName = str(numberOfSubs)+','+newName
-        #newName = encryptedName
         return newName
-
 
 def encryptAES(keyAES, iv, plaintext, mode = AES.MODE_CBC):
     encryptor = AES.new(keyAES, mode, iv)
