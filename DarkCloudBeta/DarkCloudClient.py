@@ -308,7 +308,7 @@ class DCClient:
         fileKeychain = GDCCryptoClient.getKey(pwd + fn)
         if not fileKeychain:
             #request keyfile
-            encryptedKeychainFn = GDCCryptoClient.encryptName(pwd + kcFn, userKeychain)
+            encryptedKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
             encryptedPwd = self.wd.encrypted_pwd()
             secureKeyfileContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedKeychainFn)
             fileKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, pwd + kcFn)
@@ -317,7 +317,7 @@ class DCClient:
         encryptedContent = GDCCryptoClient.encryptFile(content, fileKeychain)
 
         #craft write request to server
-        encryptedFn = GDCCryptoClient.encryptName(pwd + fn, fileKeychain)
+        encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(pwd + fn, fileKeychain))
         encryptedPwd = self.wd.encrypted_pwd()
 
         GDCHTTPClient.sendWriteRequest(encryptedPwd + encryptedFn,
