@@ -10,14 +10,25 @@ from DCHTTPClient import *
 GDCCryptoClient = DCCryptoClient()
 GDCHTTPClient = DCHTTPClient('127.0.0.1', 8080)
 
+DEBUG = True
+
 def nameDecorator(name, encryptedName):
-    return name + '-' + encryptedName
+    if DEBUG:
+        return name + '-' + encryptedName
+    else:
+        return encryptedName
 
 def keychainDecorator(name, encryptedKeychainName):
-    return name+'Kc-'+encryptedKeychainName
+    if DEBUG:
+        return name+'Kc-'+encryptedKeychainName
+    else:
+        return encryptedKeychainName
 
 def lsDecorator(name, encrypted_lsFn):
-    return name + "_ls-"+ encrypted_lsFn
+    if DEBUG:
+        return name + "_ls-"+ encrypted_lsFn
+    else:
+        return encrypted_lsFn
 
 def keychainFn(name, username):
     print "kcFn name: %s, username: %s" % (name, username)
