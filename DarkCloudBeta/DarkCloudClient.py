@@ -210,6 +210,7 @@ class DCClient:
         return "Created directory: ", name
 
     def read(self, encryptedName):
+        print "read encryptedName: " + encryptedName
         encryptedPwd = self.wd.encrypted_pwd()
         content = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedName)
         return content
@@ -225,12 +226,16 @@ class DCClient:
             userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
 
             #get encrypted keyfile name
-            encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptedName(pwd + kcFn, userKeychain))
+            encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
+
+            print "readFile eFKcFn: " + encryptedFileKeychainFn
 
             secureKeyfileContent = self.read(encryptedFileKeychainFn)
 
             #construct key object
             fileKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, pwd + kcFn)
+
+        print "fKc: " + str(fileKeychain)
 
         #request encrypted file using encrypted file name
         encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(pwd + fn, fileKeychain))
@@ -261,10 +266,10 @@ class DCClient:
 
 
             #request keyfile
-            secureKeyContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedFileKeychainFn)
+            secureKeychainContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedFileKeychainFn)
 
             #construct key object
-            dirKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd, pwd + kcFn)
+            dirKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd, pwd + kcFn)
 
         #request encrypted file using encrypted file name
         encrypted_lsFn = lsDecorator(dn, GDCCryptoClient.encryptName(pwd + lsFn, dirKeychain))
@@ -622,9 +627,9 @@ class DCDir:
         #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
         ptDnLength = len(plaintextDn)
         encDnLength = len(urllib.quote(encryptedDn))
-        lengthLessentry = 'dn,' + str(ptDnLength) + ',' + str(encDnLength) + ',' + plaintextDn + ',' + urllib.quote(encryptedDn) + ';'
+        lengthlessEntry = 'dn,' + str(ptDnLength) + ',' + str(encDnLength) + ',' + plaintextDn + ',' + urllib.quote(encryptedDn) + ';'
         entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
-        entry = entryLength + ',' + lengthlessEntry
+        entry = str(entryLength) + ',' + lengthlessEntry
         return lsFile + entry
         
 

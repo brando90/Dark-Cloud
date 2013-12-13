@@ -123,7 +123,7 @@ class DCClientParser:
             return
 
         print "Reading file: " + name + " ..."
-        content = self.dcClient.read(name)
+        content = self.dcClient.readFile(name)
         content = "test"
         with open('tmp/' + name, 'w') as fd:
             return fd.write(content)
