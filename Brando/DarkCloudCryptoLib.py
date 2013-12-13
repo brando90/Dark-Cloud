@@ -33,6 +33,7 @@ class DCKey:
     #E_{K_{AES-CBC}}[\text{plaintext} , \ Sign_{RSA} [Hash[\text{plaintext}] ] 
     def unlock(self, secureData):
         dcSignature = self.dcDecrypt(secureData)
+        #print "dcSignature: "+ dcSignature
         plaintext = self.dcVerify(dcSignature)
         return plaintext
 
@@ -81,6 +82,11 @@ class DCKey:
     def dcVerify(self, dcSignature):
         l = ""
         i = 0
+        # for i in range(0, len(dcSignature)):
+        #     c = dcSignature[i]
+        #     if c == ",":
+        #         break
+        #     l += c
         while i < len(dcSignature):
             c = dcSignature[i]
             if c == ",":
@@ -89,7 +95,9 @@ class DCKey:
             i += 1
         index_signature = i + 1 + int(l)
         plaintext = dcSignature[i+1:index_signature]
+        #print "plaintext:" + plaintext
         rsaSignature = dcSignature[index_signature:]
+        #print "rsasignature:"+rsaSignature
         signature_to_verify = (long(rsaSignature), ) #tuple for rsa pycrypto should have (rsa_signature, )
         hash_val = hashlib.sha256(plaintext).digest()
         if self.rsaVerifyKeyObj.verify(hash_val, signature_to_verify):
@@ -150,6 +158,7 @@ class DCFileKey(DCKey):
         secureKeyTableFileData = tableKey.lock(keyFileData)
         return secureKeyTableFileData #string
 
+
     #Note: the output of this file MUST be locked before sending it to the server.
     def toUnsecureString(self):
         #generate keys
@@ -191,35 +200,22 @@ class DCCryptoClient:
     def __init__(self):
         #maps name of file to its key object
         self.pathsToKeys = {}
+        #print "CORRECT DCCryptoClient"
 
     def addKeyObj(self, pathname, keyObj):
         #adds a key=name maping to value=keyObj to the dictionary
         self.pathsToKeys[pathname] = keyObj
 
     def getKey(self, pathname):
-        return self.htKeys.get(pathname)
+        return self.pathsToKeys.get(pathname)
 
     def encryptName(self, name, keyObj):
-        return keyObj.dcEncrypt(name) 
+        encryptedName = keyObj.dcEncrypt(name) 
+        encryptedNameUnixAccetpableFormat = self.makeStringToAcceptableUnixFormat(encryptedName)
+        return encryptedNameUnixAccetpableFormat
 
     def decryptName(self, encryptname, keyObj):
         return keyObj.dcDecrypt(encryptname)
-
-    def makeStringToAcceptableUnixFormat(self, encryptedName):
-        array = []
-        length = len(encryptedName)
-        newName = encryptedName
-        for i in range(0,length):
-            c = encryptedName[i]
-            if(c == '\0'):
-                newName = newName[:i]+"T"+newName[i+1:]
-                array.append(i)
-        numberOfSubs = len(array)
-        for i in range(0,numberOfSubs):
-            index = array[i]
-            newName = str(index)+','+newName
-        newName = str(numberOfSubs)+','+newName
-        return newName
 
     def encryptFile(self, fileContent, keyObj):
         return keyObj.lock(fileContent)
@@ -227,12 +223,14 @@ class DCCryptoClient:
     def decryptFile(self, secureFileContent, keyObj):
         return keyObj.unlock(secureFileContent)
 
-    def createKeyFileObj(self):
+    def createKeyFileObj(self, pathToKeychain=None):
         #generate keys
         iv = str(makeIV(os.urandom(32))) #size = 16
         keyAES = str(makeKeyAES(os.urandom(32))) #size = 32
         rsaRandNum = str(os.urandom(32)) # size = 32
         keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
+        if pathToKeychain:
+            self.addKeyObj(pathToKeychain, keyFileObj)
         return keyFileObj
 
     def createUserMasterKeyObj(self, username, password, pathToKeyFilename):
@@ -274,9 +272,29 @@ class DCCryptoClient:
             keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
         return keyFileObj
 
-    def shareKeyFileAsRead(self, keyObjToShare):
+    def makeStringToAcceptableUnixFormat(self, encryptedName):
+        array = []
+        length = len(encryptedName)
+        newName = encryptedName
+        for i in range(0,length):
+            c = encryptedName[i]
+            if c == '\0':
+                newName = newName[:i]+"N"+newName[i+1:]
+                array.append(i)
+            elif c == '/':
+                newName = newName[:i]+"F"+newName[i+1:]
+                array.append(i)
+        numberOfSubs = len(array)
+        for i in range(0,numberOfSubs):
+            index = array[i]
+            newName = str(index)+','+newName
+        newName = str(numberOfSubs)+','+newName
+        return newName
+
+    def shareKeyFileAsKeyReadObj(self, keyObjToShare):
         (iv, keyAES, verifyKey) = keyObjToShare.getReadkeys()
         return DCFileKey(iv, keyAES, rsaRandNum = None, publickey = verifyKey)
+
 
 def encryptAES(keyAES, iv, plaintext, mode = AES.MODE_CBC):
     encryptor = AES.new(keyAES, mode, iv)
@@ -303,7 +321,6 @@ def equalRSAKeys(rsaKey1, rsaKey2):
     return (boolprivate and boolpublic)
 
 def makeRSAKeyObj(password, salt):
-    #for performance changes change the bits
     #careful with changing this function.
     #if you don't know how it works, changing it might break the library completely.
     master_key = PBKDF2(password, salt, count=10000)  # bigger count = better
