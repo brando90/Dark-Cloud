@@ -101,13 +101,14 @@ class DCKey:
 #Recall that the key file table is the file that actually has the keys for locking (encrpting/signing) 
 #a user's data content. This class just locks that (key file table).
 #The table key is the one that actually locks this information from the server.
+#USER KEYCHAIN
 class DCTableKey(DCKey):
     def __init__(self, username, password, pathToKeyFilename):
         #when making keys from password for a specific keyFilename
         salt = hashlib.sha256(username).digest()
-        self.keyAES = makeKeyAES(password, salt)
+        self.keyAES = makeKeyAES(password, salt) #Uses PBKDF2 to generate
         saltIv = hashlib.sha256(str(pathToKeyFilename)).digest()
-        self.iv = makeIV(self.keyAES, saltIv)
+        self.iv = makeIV(self.keyAES, saltIv) #Uses PBKDF2 to generate
         self.rsaKeyObj = makeRSAKeyObj(password, salt)
         self.rsaVerifyKeyObj = self.rsaKeyObj.publickey()
 
@@ -124,6 +125,7 @@ class DCTableKey(DCKey):
 
 #Class for holding the keys that locks (encrypts/signs) the actual content of the user's data.
 #This class can be made into a secure key file table by running toSecureString.
+#FILE KEYCHAIN AND DIRECTORY KEY CHAIN
 class DCFileKey(DCKey):
     def __init__(self, iv, keyAES, rsaRandNum = None, publickey = None):
         self.keyAES = keyAES
