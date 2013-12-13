@@ -187,6 +187,7 @@ class DCCryptoClient:
         return DCTableKey(username, password, pathToKeyFilename)
 
     def makeKeyFileObjFromSecureKeyData(self, secureKeyFileData, username, password, keyFileName):
+        print "kcFn: " + keyFileName
         keyObj = DCTableKey(username, password, keyFileName)
         keyFileData = keyObj.unlock(secureKeyFileData)
         keysLengths = []
