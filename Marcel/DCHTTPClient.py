@@ -3,6 +3,7 @@
 import httplib
 import sys
 import json
+import urllib
 from urllib import urlencode
 
 # *** HTTP methods ***
@@ -35,6 +36,12 @@ class DCHTTPClient():
 
 	# Create --> PUT
 	def sendCreateRequest(self, encryptedPath, isFile=False, isDir=False, encryptedContents=None):
+		print 'create request'
+		print 'with encryptedPath: '+ urllib.quote(encryptedPath)
+		print 'with isFile: ' + str(isFile)
+		print 'with isDir: ' + str(isDir)
+		if encryptedContents:
+			print 'with encryptedContents: ' + urllib.quote(encryptedContents)
 		url = encryptedPath
 		headers = {'content-length':0, 
 		'query-string':urlencode({Method:Create, File:isFile, Dir:isDir}),

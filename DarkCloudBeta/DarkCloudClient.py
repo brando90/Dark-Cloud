@@ -81,9 +81,10 @@ class DCClient:
         print "createFile"
         kcFn = keychainFn(fn, self.username)
         path = self.wd.pwd()
+        print "create file path: "+ path
         userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
         fileKeychain = GDCCryptoClient.createKeyFileObj(path + '/' + fn)
-        encryptedFileKeychainFn = keychainDecorator(fn, self.cryptClient.encryptName(path + '/' + kcFn, userKeychain)) #is this the right key
+        encryptedFileKeychainFn = keychainDecorator(fn, GDCCryptoClient.encryptName(path + '/' + kcFn, userKeychain)) #is this the right key
         encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(path + '/' + fn, fileKeychain))
         parentDn = self.wd.up(1) 
         if parentDn:
@@ -113,7 +114,8 @@ class DCClient:
         # # --- END ---
 
 
-        #request to create key file on server        
+        #request to create key file on server   
+        print "pathToKeys: " + repr(GDCCryptoClient.pathToKeys)     
         encryptedPath = self.wd.encrypted_pwd() 
         secureKeyContent = fileKeychain.toSecureString(self.username, self.passwd, encryptedPath + '/' + encryptedFileKeychainFn)
         GDCHTTPClient.sendCreateRequest(encryptedPath + '/' + encryptedFileKeychainFn,
