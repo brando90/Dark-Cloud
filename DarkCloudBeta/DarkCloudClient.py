@@ -596,8 +596,8 @@ class DCDir:
         # Entry looks as follows: 
         #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
         ptFnLength = len(plaintextFn)
-        encFnLength = len(encryptedFn)
-        lengthlessEntry = 'fn,' + str(ptFnLength) + ',' + str(encFnLength) + ',' + plaintextFn + ',' + encryptedFn + ';'
+        encFnLength = len(urllib.quote(encryptedFn))
+        lengthlessEntry = 'fn,' + str(ptFnLength) + ',' + str(encFnLength) + ',' + plaintextFn + ',' + urllib.quote(encryptedFn) + ';'
         entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
         entry = str(entryLength) + ',' + lengthlessEntry
         return lsFile + entry
@@ -621,8 +621,8 @@ class DCDir:
         # Entry looks as follows: 
         #   entryLength,fn/dn,ptNameLength,encNameLength,ptName,encName;
         ptDnLength = len(plaintextDn)
-        encDnLength = len(encryptedDn)
-        lengthLessentry = 'dn,' + str(ptDnLength) + ',' + str(encDnLength) + ',' + plaintextDn + ',' + encryptedDn + ';'
+        encDnLength = len(urllib.quote(encryptedDn))
+        lengthLessentry = 'dn,' + str(ptDnLength) + ',' + str(encDnLength) + ',' + plaintextDn + ',' + urllib.quote(encryptedDn) + ';'
         entryLength = len(lengthlessEntry) + 1 # comma (below) takes one character
         entry = entryLength + ',' + lengthlessEntry
         return lsFile + entry
