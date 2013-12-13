@@ -73,7 +73,7 @@ keyF1 = keyFileObj
 secureStr = keyF1.toSecureString('password', 'username', 'keyFilename')
 keyMadeFromSecureString = dcCryptoClient.makeKeyFileObjFromSecureKeyData(secureStr, 'password', 'username', 'keyFilename')
 # print "unlock secure string: ",dcCryptoLib.DCTableKey('password', 'username', 'keyFilename').unlock(secureStr)
-print "was the key made from secure key match original: ",keyMadeFromSecureString == keyF1
+print "was the key made from secure key match original: ", keyMadeFromSecureString == keyF1
 # print "______keyObj______"
 # print keyObj
 # print "______keyF1______"
@@ -133,7 +133,22 @@ secureReadKeyStr = readKey.toSecureString( "username", "password", "pathToKeyFil
 readKeyFromStr = dcCryptoClient.makeKeyFileObjFromSecureKeyData( secureReadKeyStr, "username", "password", "pathToKeyFilename")
 decryptedData2 = dcCryptoClient.decryptFile(secureData, readKeyFromStr)
 
-print "reading from secure file worked: ", decryptedData2 == plaintext
+print "reading from secure file worked test 1: ", decryptedData2 == plaintext
+
+#test permission
+plaintext = "plaintext for second permission test (test 2)"
+secureData = dcCryptoClient.encryptFile(plaintext, keyFileObj)
+#to share a key and lock it with a new password
+#sharing unsecure key string
+unsecureString2 = readKeyFromStr.toUnsecureString()
+#locking with new key
+userKey2 = dcCryptoLib.DCTableKey("bob", "bob", "bob")
+secureReadKeyStr2 = userKey2.lock(unsecureString2)
+#making the actual reading key from locked keys locked by new password
+readKeyFromStr2 = dcCryptoClient.makeKeyFileObjFromSecureKeyData(secureReadKeyStr2, "bob", "bob", "bob")
+unlockedData2 = dcCryptoClient.decryptFile(secureData, readKeyFromStr)
+
+print "reading from secure file worked test 2: ", unlockedData2 == plaintext
 
 ##==
 plaintext = "brando123"
@@ -180,13 +195,13 @@ print "encrypt simple test2: ", en2 == en3
 print "multiple encrypt name test 1: ", en1 == en2 and en1 == en3 and en1 == en4
 print "multiple encrypt name test 2: ", en2 == en3 and en3 == en4
 
-den1 = clib.decryptName(en1, k1)
-den2 = clib.decryptName(en2, k2)
-den3 = clib.decryptName(en3, k3)
-den4 = clib.decryptName(en4, k1)
+# den1 = clib.decryptName(en1, k1)
+# den2 = clib.decryptName(en2, k2)
+# den3 = clib.decryptName(en3, k3)
+# den4 = clib.decryptName(en4, k1)
 
-print "decrypt name simple test: ", den1 == n
-print "decrypt names: " , den1 == n and den1 == den2 and den2 == den3 and den3 == den4 and den4 == n
+# print "decrypt name simple test: ", den1 == n
+# print "decrypt names: " , den1 == n and den1 == den2 and den2 == den3 and den3 == den4 and den4 == n
 
 
 
