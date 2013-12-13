@@ -275,8 +275,6 @@ class DCCryptoClient:
         (iv, keyAES, verifyKey) = keyObjToShare.getReadkeys()
         return DCFileKey(iv, keyAES, rsaRandNum = None, publickey = verifyKey)
 
-
-
 def encryptAES(keyAES, iv, plaintext, mode = AES.MODE_CBC):
     encryptor = AES.new(keyAES, mode, iv)
     ciphertext = encryptor.encrypt(plaintext)
