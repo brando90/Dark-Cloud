@@ -253,12 +253,8 @@ class DCClient:
         if not dirKeychain:
             userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
 
-<<<<<<< HEAD
             encryptedFileKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
-=======
-            encryptedFileKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(path + '/' + kcFn, userKeychain))
-            encryptedPath = self.wd.encrypted_pwd()
->>>>>>> 372269c2fb09d515ea6a60261d8cb78a31b11c73
+
 
             #request keyfile
             secureKeyContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedFileKeychainFn)
