@@ -144,6 +144,14 @@ class DCFileKey(DCKey):
 
     #Generates a string representing the the keys of for locking a file ina secure (encrypted/signed) format.
     def toSecureString(self, username, password, pathToKeyFilename):
+        keyFileData = self.toUnsecureString()
+        #generate secure file
+        tableKey = DCTableKey(username, password, pathToKeyFilename)
+        secureKeyTableFileData = tableKey.lock(keyFileData)
+        return secureKeyTableFileData #string
+
+    #Note: the output of this file MUST be locked before sending it to the server.
+    def toUnsecureString(self):
         #generate keys
         ivLen = len(self.iv)
         keyAESLen = len(self.keyAES)
@@ -157,10 +165,7 @@ class DCFileKey(DCKey):
         #generate plain text file data
         keyFileData = str(ivLen)+","+str(keyAESLen)+","+str(rsaRandNumLen)+","+str(rsaVerifyKeyLen)+","
         keyFileData += self.iv+self.keyAES+self.rsaRandNum+rsaVerifyKeyStr
-        #generate secure file
-        tableKey = DCTableKey(username, password, pathToKeyFilename)
-        secureKeyTableFileData = tableKey.lock(keyFileData)
-        return secureKeyTableFileData #string
+        return keyFileData
 
     def __eq__(self, otherKey):
         if not isinstance(otherKey, DCFileKey):
@@ -195,17 +200,18 @@ class DCCryptoClient:
         return self.htKeys.get(pathname)
 
     def encryptName(self, name, keyObj):
-        encryptedName = keyObj.dcEncrypt(name) 
-        encryptedNameUnixAccetpableFormat = self.makeStringToAcceptableUnixFormat(encryptedName)
-        return encryptedNameUnixAccetpableFormat
+        return keyObj.dcEncrypt(name) 
+
+    def decryptName(self, encryptname, keyObj):
+        return keyObj.dcDecrypt(encryptname)
 
     def makeStringToAcceptableUnixFormat(self, encryptedName):
         array = []
         length = len(encryptedName)
-        newName = encryptname
+        newName = encryptedName
         for i in range(0,length):
-            c = encryptname[i]
-            if(c = '\0'):
+            c = encryptedName[i]
+            if(c == '\0'):
                 newName = newName[:i]+"T"+newName[i+1:]
                 array.append(i)
         numberOfSubs = len(array)
@@ -214,11 +220,6 @@ class DCCryptoClient:
             newName = str(index)+','+newName
         newName = str(numberOfSubs)+','+newName
         return newName
-
-    def decryptName(self, encryptname, keyObj):
-        #a\n\nta
-        #attta
-        return keyObj.dcDecrypt(encryptname)
 
     def encryptFile(self, fileContent, keyObj):
         return keyObj.lock(fileContent)
