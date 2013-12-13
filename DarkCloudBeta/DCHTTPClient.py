@@ -78,7 +78,7 @@ class DCHTTPClient():
 	# Rename --> POST
 	def sendRenameRequest(self, encryptedPath, newEncryptedPath):
 		url = DCHTTPClient.collapseDoubleSlashes(encryptedPath)
-		headers = {'content-length':0,'query-string':urlencode({Method:Rename}), 'url':url}
+		headers = {'content-length':len(newEncryptedPath),'query-string':urlencode({Method:Rename}), 'url':url}
 		self.connection.request(POST, '', newEncryptedPath, headers)
 		return self.connection.getresponse().read()
 

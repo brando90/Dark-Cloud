@@ -445,12 +445,13 @@ class DCClient:
         print "rename"
         kcFn = keychainFn(name, self.username)
         newKcFn = keychainFn(newName, self.username)
-        lsFn = lsFilename(name)
-        new_lsFn = lsFilename(newName)
+        lsFn = nameTo_lsFn(name)
+        new_lsFn = nameTo_lsFn(newName)
         pwd = self.wd.pwd()
         encryptedPwd = self.wd.encrypted_pwd()
 
         keychain = GDCCryptoClient.getKey(pwd + name)
+        encryptedKeychainFn = None
         if not keychain:
             userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
             encryptedKeychainFn = keychainDecorator(name, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
@@ -470,6 +471,7 @@ class DCClient:
         newEncryptedName = nameDecorator(newName, GDCCryptoClient.encryptName(pwd + newName, keychain))
         encrypted_lsFn = None
         newEncrypted_lsFn = None
+        print 'isDir? : ' + str(isDir)
         if isDir:
             encrypted_lsFn = lsDecorator(name, GDCCryptoClient.encryptName(pwd + lsFn, keychain))
             newEncrypted_lsFn = lsDecorator(newName, GDCCryptoClient.encryptName(pwd + new_lsFn, keychain))
@@ -479,10 +481,13 @@ class DCClient:
             parentDirKeychain = DCDir.verifiedDirKeychain(self.username, self.passwd, parentDn, self.wd.pwd(),self.wd.encrypted_pwd())
             # Initialize dcdir with: parentDn, pwd, encrypted_pwd, parentDirKeychain
             dcdir = DCDir(parentDn, self.wd.pwd(), self.wd.encrypted_pwd(), parentDirKeychain)
-            
+            if not encryptedKeychainFn:
+                    userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
+                    encryptedKeychainFn = keychainDecorator(name, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
             if isDir: # renaming a dir
                 # Unregisted encryptedDn, encryptedKeychainFn, encrypted_lsFn
-                dcdir.unregisterDir(encryptedName, encryptedPwd)
+
+                dcdir.unregisterDir(encryptedName, encrypted_lsFn, encryptedKeychainFn)
                 # Register newEncryptedDn, newPlaintextDn, newEncryptedKeychainFn, newPlaintextKeychainFn, newEncrypted_lsFn, new_lsFn httpClient
                 dcdir.registerDir(newEncryptedName, newName, newEncryptedKeychainFn, newKcFn, newEncrypted_lsFn, new_lsFn)
             else: # renaming a file
@@ -492,36 +497,13 @@ class DCClient:
                 dcdir.registerFile(newEncryptedName, newName, newEncryptedKeychainFn, newKcFn)
             self.wd.down(parentDn)
 
-
-        # # *** BEGIN Replaced with DCDir implementation above ***
-
-        #     # -- request to change parent directory structure --
-        #     #request to read parent directory contents to add new directory
-        #     parentName = self.wd.up(1) # returns name of directory after the last slash
-        #     dirObj = readSecureDirObj(parentName)
-        #     dirObj.remove(encryptedKeyName, kfname)
-        #     dirObj.remove(encryptedName, name)
-        #     dirObj.add(newEncryptedFileName, newName)
-        #     dirObj.add(newEncryptedKeyName, newKFName)
-        #     if isDir:
-        #         dirObj.remove(encryptedLSFileName, lsname)
-        #         dirObj.add(newEncryptedLSFileName, newLSName)
-        #     dirObj.sort()
-
-        #     #request to write the modified directory
-        #     self.write(parentName, dirObj.content(), True)
-
-        #     self.wd.down(parentName)
-
-        # # --- END ---
-
         # -------- set new names -------------------
-        GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedName,
+        GDCHTTPClient.sendRenameRequest(encryptedPwd + encryptedName,
                                         encryptedPwd + newEncryptedName)
-        GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedKeychainFn,
+        GDCHTTPClient.sendRenameRequest(encryptedPwd + encryptedKeychainFn,
                                         encryptedPwd + newEncryptedKeychainFn)
         if isDir:
-            GDCHTTPClient.sendReadRequest(encryptedPwd + encrypted_lsFn,
+            GDCHTTPClient.sendRenameRequest(encryptedPwd + encrypted_lsFn,
                                             encryptedPwd + newEncrypted_lsFn)
 
 # -------------------------------

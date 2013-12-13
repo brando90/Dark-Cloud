@@ -50,6 +50,7 @@ class DCClientParser:
             'read': self.read,
             'write': self.write,
             'rename': self.rename,
+            'renamedir': self.renamedir,
             'login': self.login,
             'logout': self.logout,
             'mkdir': self.mkdir,
@@ -151,6 +152,18 @@ class DCClientParser:
             print "Invalid file name."
             return
         self.dcClient.rename(name, newName)
+        print "rename", name, newName
+
+    def renamedir(self, args):
+        if len(args) != 3:
+            print "Incorrect number of arguments\nUsage: read filename"
+            return
+        name = args[1]
+        newName = args[2]
+        if isUnsanitizedName(name) or isUnsanitizedName(newName):
+            print "Invalid file name."
+            return
+        self.dcClient.rename(name, newName, True)
         print "rename", name, newName
 
     def mkdir(self, args):
