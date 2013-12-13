@@ -694,10 +694,10 @@ class DCDir:
         print '*** pwd: %s, encrypted_pwd:%s, dn: %s' % (pwd, encrypted_pwd, dn)
         userKeychain = GDCCryptoClient.createUserMasterKeyObj(username, password,  pwd + kcFn)
         # Get encrypted dirKeychainFn name
-        encryptedDirKeychainFn = GDCCryptoClient.encryptName(pwd + kcFn, userKeychain)
+        encryptedDirKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
         # Query server for secure dirKeychain
         print "READ REQUEST: encrypted_pwd:%s, encryptedDirKeychainFn:%s" % (encrypted_pwd, keychainDecorator(dn,urllib.quote(encryptedDirKeychainFn)))
-        secureDirKeychain = GDCHTTPClient.sendReadRequest(encrypted_pwd + keychainDecorator(dn,encryptedDirKeychainFn))
+        secureDirKeychain = GDCHTTPClient.sendReadRequest(encrypted_pwd + encryptedDirKeychainFn)
         # Unlock dirKeychain and return it
         # secureKeyFileData, username, password, keyFileName
         return GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureDirKeychain, username, password, pwd + kcFn)
