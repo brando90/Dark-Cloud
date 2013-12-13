@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013) (format=pdflatex 2013.5.30)  12 DEC 2013 23:18
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013) (format=pdflatex 2013.5.30)  13 DEC 2013 14:16
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -541,11 +541,6 @@ e
 ABD: EveryShipout initializing macros [1
 
 {/usr/local/texlive/2013/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-Underfull \hbox (badness 10000) in paragraph at lines 64--65
-
- []
-
-
 Underfull \hbox (badness 10000) in paragraph at lines 66--67
 
  []
@@ -566,7 +561,7 @@ Underfull \hbox (badness 10000) in paragraph at lines 72--73
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 75--76
+Underfull \hbox (badness 10000) in paragraph at lines 74--75
 
  []
 
@@ -600,12 +595,12 @@ Underfull \hbox (badness 10000) in paragraph at lines 87--88
 
  []
 
-[3]
-Underfull \hbox (badness 10000) in paragraph at lines 112--113
+
+Underfull \hbox (badness 10000) in paragraph at lines 89--90
 
  []
 
-
+[3]
 Underfull \hbox (badness 10000) in paragraph at lines 114--115
 
  []
@@ -616,22 +611,27 @@ Underfull \hbox (badness 10000) in paragraph at lines 116--117
  []
 
 [4]
-Underfull \hbox (badness 10000) in paragraph at lines 127--129
+Underfull \hbox (badness 10000) in paragraph at lines 118--119
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 129--131
 
  []
 
 [5]
-Overfull \hbox (14.96947pt too wide) in paragraph at lines 159--159
+Overfull \hbox (14.96947pt too wide) in paragraph at lines 161--161
 []\OT1/cmr/bx/n/12 Detecting unau-tho-rized be-hav-ior by the un-trusted server
  
  []
 
 
-Overfull \hbox (4.04585pt too wide) in paragraph at lines 163--163
+Overfull \hbox (4.04585pt too wide) in paragraph at lines 165--165
 []\OT1/cmr/bx/n/12 Detecting unau-tho-rized be-hav-ior by the un-trusted user 
  []
 
-[6] (./paper.aux)
+[6] [7] (./paper.aux)
 
 LaTeX Warning: There were multiply-defined labels.
 
@@ -653,16 +653,17 @@ sr/local/texlive/2013/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr
 ocal/texlive/2013/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/loc
 al/texlive/2013/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local
 /texlive/2013/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/local/t
-exlive/2013/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/texl
-ive/2013/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive
-/2013/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/20
-13/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2013/
-texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb></usr/local/texlive/2013/te
-xmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb>
-Output written on paper.pdf (6 pages, 188489 bytes).
+exlive/2013/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/local/texl
+ive/2013/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/texlive
+/2013/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive/20
+13/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2013/
+texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2013/tex
+mf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb></usr/local/texlive/2013/texmf
+-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb>
+Output written on paper.pdf (7 pages, 198235 bytes).
 PDF statistics:
- 86 PDF objects out of 1000 (max. 8388607)
- 62 compressed objects within 1 object stream
+ 95 PDF objects out of 1000 (max. 8388607)
+ 69 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  13 words of extra memory for PDF output out of 10000 (max. 10000000)
 
