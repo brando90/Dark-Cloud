@@ -165,17 +165,21 @@ class DCCryptoClient:
         return keyObj.dcDecrypt(encryptname)
 
     def encryptFile(self, fileContent, keyObj):
-        return keyObj.lock(fileContent)
+        encryptedName = keyObj.dcEncrypt(name) 
+        encryptedNameUnixAccetpableFormat = self.makeStringToAcceptableUnixFormat(urllib.quote(encryptedName))
+        return encryptedNameUnixAccetpableFormat
 
     def decryptFile(self, secureFileContent, keyObj):
         return keyObj.unlock(secureFileContent)
 
-    def createKeyFileObj(self):
+    def createKeyFileObj(self, pathToKeychain=None):
         #generate keys
         iv = str(makeIV(os.urandom(32))) #size = 16
         keyAES = str(makeKeyAES(os.urandom(32))) #size = 32
         rsaRandNum = str(os.urandom(32)) # size = 32
         keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
+        if pathToKeychain:
+            self.addKeyObj(pathToKeychain, keyFileObj)
         return keyFileObj
 
     def createUserMasterKeyObj(self, username, password, pathToKeyFilename):
@@ -208,6 +212,26 @@ class DCCryptoClient:
         rsaRandNum = keyFileData[startRSAnum:]
         keyFileObj = DCFileKey(iv, keyAES, rsaRandNum)
         return keyFileObj
+
+    def makeStringToAcceptableUnixFormat(self, encryptedName):
+        array = []
+        length = len(encryptedName)
+        newName = encryptname
+        for i in range(0,length):
+            c = encryptname[i]
+            if(c == "\0"):
+                newName = newName[:i]+"N"+newName[i+1:]
+                array.append(i)
+            elif c == "/":
+                newName = newName[:i]+"F"+newName[i+1:]
+                array.append(i)
+        numberOfSubs = len(array)
+        for i in range(0,numberOfSubs):
+            index = array[i]
+            newName = str(index)+','+newName
+        newName = str(numberOfSubs)+','+newName
+        #newName = encryptedName
+        return newName
 
 
 def encryptAES(keyAES, iv, plaintext, mode = AES.MODE_CBC):
