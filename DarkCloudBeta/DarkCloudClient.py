@@ -184,7 +184,7 @@ class DCClient:
                                         secureKeyContent)
 
         #lsfile
-        secureFileContent = self.cryptClient.encryptFile("", dirKeychain)
+        secureFileContent = GDCCryptoClient.encryptFile("", dirKeychain)
         GDCHTTPClient.sendCreateRequest(encryptedPath + '/' + encrypted_lsFn,
                                         True,
                                         False,
@@ -238,10 +238,10 @@ class DCClient:
     #     kfname = tableFilename(name)
     #     lsname = lsFilename(name)
     #     path = self.wd.pwd()
-    #     mkObj = self.cryptClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
+    #     mkObj = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kfname)
 
     #     #get encrypted keyfile name
-    #     encryptedKeyFileName = self.cryptClient.encryptName(path + '/' + kfname, mkObj)
+    #     encryptedKeyFileName = GDCCryptoClient.encryptName(path + '/' + kfname, mkObj)
 
     #     #TODO:check that keys exist for all parts of the encrypted path
 
@@ -251,20 +251,20 @@ class DCClient:
     #     secureKeyfileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedKeyFileName)
 
     #     #construct key object
-    #     keyObj = self.cryptClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
+    #     keyObj = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeyfileContent, self.username, self.passwd)
 
     #     #save keyobj for later
-    #     self.cryptClient.addKeyObj(path + '/' + lsname, keyObj)
+    #     GDCCryptoClient.addKeyObj(path + '/' + lsname, keyObj)
 
     #     #request encrypted file using encrypted file name
-    #     encryptedLSFileName = self.cryptClient.encryptName(path + '/' + lsname, keyObj)
-    #     encryptedDirName = self.cryptClient.encryptName(path + '/' + name, keyObj)
+    #     encryptedLSFileName = GDCCryptoClient.encryptName(path + '/' + lsname, keyObj)
+    #     encryptedDirName = GDCCryptoClient.encryptName(path + '/' + name, keyObj)
 
     #     encryptedLSFileContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedLSFileName)
     #     dirContent = self.HttpClient.sendReadRequest(encryptedPath + '/' + encryptedDirName)
 
     #     #decrypt file contents
-    #     decryptedLSFileContent = self.cryptClient.decryptFile(encryptedLSFileContent, keyObj)
+    #     decryptedLSFileContent = GDCCryptoClient.decryptFile(encryptedLSFileContent, keyObj)
 
     #     #verify contents
     #     dirObj = DCSecureDir(dirContent, decryptedLSFileContent)
@@ -283,7 +283,7 @@ class DCClient:
         if not dirKeychain:
             userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, path + '/' + kcFn)
 
-            encryptedFileKeychainFn = keychainDecorator(dn, self.cryptClient.encryptName(path + '/' + kcFn, userKeychain))
+            encryptedFileKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(path + '/' + kcFn, userKeychain))
             encryptedPath = self.wd.encrypted_pwd()
 
             #request keyfile
@@ -369,7 +369,7 @@ class DCClient:
             fileKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd, path+'/'+kcFn)
 
         #request encrypted file using encrypted file name
-        encryptedFn = nameDecorator(fn, self.cryptClient.encryptName(path + '/' + fn, fileKeychain))
+        encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(path + '/' + fn, fileKeychain))
 
         parentDn = self.wd.up(1)
         if parentDn:

@@ -5,6 +5,7 @@ import subprocess
 import shlex
 import sys
 import re
+import shutil
 
 prompt = "DarkCloud >>> "
 
@@ -39,6 +40,7 @@ class DCClientParser:
             'cd': self.cd,
             'vim': self.vim,
             'register': self.register,
+            'pwd': self.pwd,
             'readFiles': self.showReadFiles #maybe
         }
         
@@ -172,6 +174,12 @@ class DCClientParser:
         else:
             self.dcClient.wd.down(name)
 
+    def pwd(self, args):
+        if len(args) != 1:
+            print "Incorrect number of arguments\n Print working dir."
+            return
+        print self.dcClient.wd.pwd()
+
     def vim(self, args):
         if len(args) != 2:
             print "Incorrect number of arguments\nUsage: read filename"
@@ -245,7 +253,8 @@ def run():
             parser.run_command(cmd, args)
     except EOFError:
         print "\nEnded Session"
-    subprocess.call('touch foo', shell=True)
+    if os.path.exists("tmp"):
+        shutil.rmtree('tmp')
 
 
 if __name__ == '__main__':
