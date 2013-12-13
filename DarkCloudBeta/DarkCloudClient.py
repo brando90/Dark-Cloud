@@ -189,7 +189,8 @@ class DCClient:
                                         secureKeyContent)
 
         #lsfile
-        secureFileContent = self.cryptClient.encryptFile("", dirKeychain)
+
+        secureFileContent = GDCCryptoClient.encryptFile("", dirKeychain)
         GDCHTTPClient.sendCreateRequest(encryptedPwd + encrypted_lsFn,
                                         True,
                                         False,
@@ -252,7 +253,12 @@ class DCClient:
         if not dirKeychain:
             userKeychain = GDCCryptoClient.createUserMasterKeyObj(self.username, self.passwd, pwd + kcFn)
 
+<<<<<<< HEAD
             encryptedFileKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(pwd + kcFn, userKeychain))
+=======
+            encryptedFileKeychainFn = keychainDecorator(dn, GDCCryptoClient.encryptName(path + '/' + kcFn, userKeychain))
+            encryptedPath = self.wd.encrypted_pwd()
+>>>>>>> 372269c2fb09d515ea6a60261d8cb78a31b11c73
 
             #request keyfile
             secureKeyContent = GDCHTTPClient.sendReadRequest(encryptedPwd + encryptedFileKeychainFn)
@@ -335,7 +341,8 @@ class DCClient:
             fileKeychain = GDCCryptoClient.makeKeyFileObjFromSecureKeyData(secureKeychainContent, self.username, self.passwd, path+'/'+kcFn)
 
         #request encrypted file using encrypted file name
-        encryptedFn = nameDecorator(fn, self.cryptClient.encryptName(pwd + fn, fileKeychain))
+
+        encryptedFn = nameDecorator(fn, GDCCryptoClient.encryptName(pwd + fn, fileKeychain))
 
         parentDn = self.wd.up(1)
         if parentDn:
